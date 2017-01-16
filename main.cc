@@ -21,7 +21,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-
+#include <stdlib.h>
 #include <iostream>
 #include <vector>
 #include <utility>
@@ -84,8 +84,6 @@ std::map<int,std::string> fastaReads;
 int isDoveTail(mhapRead_t* mRead);
 int isLeftAligned(mhapRead_t* mRead);
 
-static void printmhapreads(void);
-static void printnodes(void);
 
 int main(int argc, char** argv) {
 	/*
@@ -94,6 +92,7 @@ int main(int argc, char** argv) {
 	int defaultOutput = 1;
 	std::string mhapPath;
 	std::string fastaPath;
+	std::string generatorPath;
 	std::string outputPath = "output.fasta";
 	double minJaccardScore = 1.0;
 	int minJaccardIx;
@@ -105,36 +104,30 @@ int main(int argc, char** argv) {
 	if (argc < ARGC_VAL_MIN) {
 		std::cout << "Too few parameters! Expected at least " << ARGC_VAL_MIN-1 << ", got " << argc-1 << ".\r\nTerminating." << std::endl;
 		return 1;
-	} else {
-//		std::cout << "Input parameters OK" << std::endl;
 	}
 	for (int i=1; i<argc; ++i) {
-		if (strcmp(argv[i],"-mhap") == 0) {
+		if (strcmp(argv[i],"-in_mhap") == 0) {
 			mhapPath.assign(argv[++i]);
-			// accept only *.mhap for now
 			std::string inputExtension;
 			std::string::size_type idx = mhapPath.rfind('.');
 			if (idx != std::string::npos) {
 				inputExtension = mhapPath.substr(idx);
 				if (strcmp(inputExtension.c_str(),".mhap")) {
-					std::cout << "Please provide a *.mhap file. (got " <<  inputExtension << ")" << std::endl << "Terminating." << std::endl;
+					std::cout << "Please set target to be a *.mhap file. (got " <<  inputExtension << ")" << std::endl << "Terminating." << std::endl;
 					return 1;
 				}
 			} else {
 				std::cout << "Provide input file extension!" << std::endl << "Terminating." << std::endl;
 				return 1;
 			}
-//			std::cout << "Input path: " << inputPath << std::endl;
-//			std::cout << "Input extension " << inputExtension << std::endl;
 		} else if (strcmp(argv[i],"-fasta") == 0) {
 			fastaPath.assign(argv[++i]);
-			// accept only *.mhap for now
 			std::string inputExtension;
 			std::string::size_type idx = fastaPath.rfind('.');
 			if (idx != std::string::npos) {
 				inputExtension = fastaPath.substr(idx);
 				if (strcmp(inputExtension.c_str(),".fasta")) {
-					std::cout << "Please provide a *.fasta file. (got " <<  inputExtension << ")" << std::endl << "Terminating." << std::endl;
+					std::cout << "Please provide a *.fasta input file. (got " <<  inputExtension << ")" << std::endl << "Terminating." << std::endl;
 					return 1;
 				}
 			} else {
@@ -144,13 +137,9 @@ int main(int argc, char** argv) {
 		} else if (strcmp(argv[i],"-o") == 0) {
 			outputPath.assign(argv[++i]);
 			defaultOutput = 0;
-			std::ofstream outputFile (outputPath.c_str());
-			if (!outputFile) {
-				std::cout << "Cannot generate output file!" << std::endl << "Terminating." << std::endl;
-			} else {
-				outputFile.close();
-			}
-//			std::cout << "Output path: " << outputPath << std::endl;
+			
+		} else if (strcmp(argv[i],"-mhap_gen") == 0) {
+			generatorPath.assign(argv[++i]);
 		} else {
 			std::cout << "invalid cli options" << std::endl << "Terminating" << std::endl;
 			return 1;
@@ -158,13 +147,22 @@ int main(int argc, char** argv) {
 	}
 	if (fastaPath.empty() || mhapPath.empty()) {
 		std::cout << "Please provide both *.fasta and *.mhap files!" << std::endl;
-//		return 1;
+		return 1;
 	}
 	/*
 		open input file (fasta or mhap)
 			mhap is better, because conversion of ecoli_corrected.fasta to mhap (graphmap) takes about 70 minutes on 4 cores and 10 GB RAM
 	*/
-	// only mhap for now :)
+	//std::cout << generatorPath" owler -r "fastaPath" -d "fastaPath" -o "mhapPath;
+	generatorPath += " owler -r ";
+	generatorPath += fastaPath;
+	generatorPath += " -d ";
+	generatorPath += fastaPath;
+	generatorPath += " - o ";
+	generatorPath += mhapPath;
+	std::cout << generatorPath << std::endl;
+	system(generatorPath.c_str());
+
 	std::ifstream inputFile(mhapPath.c_str(),std::ifstream::in);
 	if (!inputFile) {
 		std::cout << mhapPath <<": No such file" << std::endl;
@@ -190,16 +188,9 @@ int main(int argc, char** argv) {
 		cRead.start = std::make_pair(s1,s2);
 		cRead.end = std::make_pair(e1,e2);
 		cRead.rc = std::make_pair(rc1,rc2);
-//		std::cout << ix1 << " " << ix2 << " " << js << " " << smm << " " << rc1 << " " << s1 << " " << e1 << " " << l1 << " " << rc2 << " " << s2 << " " << e2 << " " << l2 << std::endl;
 		// push_back to a vector of reads
 		mhapReads.push_back(cRead);
 	}
-	//std::cout << mhapReads.size() << std::endl;
-
-	
-
-	//printmhapreads();
-
 
 	/*
 		generate read and overlap contexts
@@ -239,8 +230,6 @@ int main(int argc, char** argv) {
 		nodes[ixf] = bNodeF;
 		nodes[ixs] = bNodeS;
 	}
-	//std::cout << nodes.size() << std::endl;
-	//printnodes();
 	for (std::map<int,BOGNode_t>::iterator it=nodes.begin(); it!=nodes.end(); ++it) {
 		if (it->second.lOvlp.size() != 0 || it->second.rOvlp.size() != 0) {
 			// these reads have at least one overlaps
@@ -249,7 +238,6 @@ int main(int argc, char** argv) {
 			readIxs.erase(it->first);
 		}
 	}
-	//std::cout << "Cleaned: " << nodes.size() - nodes_filtered.size() << std::endl;
 	for (std::map<int,BOGNode_t>::iterator it=nodes_filtered.begin(); it!=nodes_filtered.end(); ++it) {
 		// sort by Jaccard score which is not exactly Jaccard score when mhap comes from graphmap but ok
 		std::sort(it->second.lOvlp.begin(),it->second.lOvlp.end(),cmpNodes);
@@ -264,13 +252,6 @@ int main(int argc, char** argv) {
 			starters.insert(it->first);
 		}
 	}
-	//minJaccardIx = 11;
-	//std::cout << "MJI" << minJaccardIx << std::endl;
-
-	//for (std::vector<mhapRead_t*>::iterator it = nodes_filtered[minJaccardIx].rOvlp.begin(); it!=nodes_filtered[minJaccardIx].rOvlp.end(); ++it) {
-	//	std::cout << (*it)->jaccardScore << std::endl;
-	//}
-	//return 0;
 
 	// thats it, we have our densely populated overlap graph
 
@@ -283,7 +264,6 @@ int main(int argc, char** argv) {
 
 	// pick the node with the worst left overlap Jaccard score - this will be our starting node
 	std::vector<std::vector<mhapRead_t*> > mhapResults;
-	//std::cout << "#reads: " << readIxs.size() << std::endl;
 	for (std::set<int>::iterator sIt = starters.begin(); sIt != starters.end(); sIt++) {
 		std::vector<int> result;
 		std::vector<mhapRead_t*> mhapResult;
@@ -292,7 +272,6 @@ int main(int argc, char** argv) {
 		currentSet.erase(minJaccardIx);
 		while(currentSet.size()) {
 			int currentReadIx = result.back();
-			//std::cout << "Current Read: " << currentReadIx << std::endl;
 			std::pair<int,int> indices;
 			if (!nodes_filtered[currentReadIx].rOvlp.empty()) {
 				indices = nodes_filtered[currentReadIx].rOvlp[0]->id;
@@ -306,21 +285,17 @@ int main(int argc, char** argv) {
 						mhapResult.push_back(nodes_filtered[currentReadIx].rOvlp[0]);
 						currentSet.erase(indices.first);
 					} else {
-						//std::cout << "BOINK" << std::endl;
 						results.push_back(result);
 						mhapResults.push_back(mhapResult);
 						break;
 					}
 				}
 			} else {
-				//std::cout << currentReadIx << " has no rOvlp" << std::endl;
 				results.push_back(result);
 				break;
 			}
 		}
 	}
-
-	//std::cout << "Unused reads: " << readIxs.size() << std::endl;
 
 	std::vector<std::vector<int> >::iterator itMax = results.begin();
 	for (std::vector<std::vector<int> >::iterator it = results.begin(); it!=results.end(); ++it) {
@@ -360,24 +335,8 @@ int main(int argc, char** argv) {
 	std::vector<mhapRead_t*> finalMhapReads = *mitMax;
 
 	 for (std::vector<int>::iterator it = finalReads.begin(); it != finalReads.end(); ++it) {
-	 	//std::cout << *it << " ";
 	 	finalFastaResult += fastaReads[*it];
 	}
-	/*std::vector<int>::iterator finalReadIx = finalReads.begin();
-	std::vector<mhapRead_t*>::iterator finalMhapIx = finalMhapReads.begin();
-	while (finalReadIx != finalReads.end()) {
-		mhapRead_t localMhap = *(*finalMhapIx);
-
-		if (localMhap.id.first == *finalReadIx) {
-			finalFastaResult.append(fastaReads[localMhap.id.first].begin() + localMhap.start.first, fastaReads[localMhap.id.first].end() );
-			finalFastaResult.append(fastaReads[localMhap.id.second].begin() + localMhap.end.second, fastaReads[localMhap.id.second].end());
-		} else {
-			finalFastaResult.append(fastaReads[localMhap.id.second].begin() + localMhap.start.second, fastaReads[localMhap.id.second].end() );
-			finalFastaResult.append(fastaReads[localMhap.id.first].begin() + localMhap.end.first, fastaReads[localMhap.id.first].end());
-		}
-		++finalReadIx;
-		++finalMhapIx;
-	}*/
 
 	/*
 		Notify about success, return 0
@@ -410,26 +369,4 @@ int isDoveTail(mhapRead_t* mRead) {
 // not definitive
 int isLeftAligned(mhapRead_t* mRead) {
 	return mRead->start.first == 0;
-}
-
-static void printmhapreads(void) {
-	for (int i=0; i<mhapReads.size(); ++i) {
-		std::cout << mhapReads[i].id.first << " " << mhapReads[i].id.second << " " << mhapReads[i].jaccardScore << " " << mhapReads[i].smm << " " << mhapReads[i].rc.first << " " << mhapReads[i].start.first << " " << mhapReads[i].end.first << " " << mhapReads[i].l.first << " " << mhapReads[i].rc.second << " " << mhapReads[i].start.second << " " << mhapReads[i].end.second << " " << mhapReads[i].l.second << std::endl;
-	}
-}
-
-static void printnodes(void) {
-	for (std::map<int,BOGNode_t>::iterator it = nodes.begin(); it != nodes.end(); ++it) {
-		std::cout << "Node: " << it->first << std::endl;
-		std::cout << "lOvlp: ";
-		for (int j=0; j<it->second.lOvlp.size(); ++j) {
-			std::cout << it->second.lOvlp[j]->id.first << "-" << it->second.lOvlp[j]->id.second << ", ";
-		}
-		std::cout << std::endl;
-		std::cout << "rOvlp: ";
-		for (int j=0; j<it->second.rOvlp.size(); ++j) {
-			std::cout << it->second.rOvlp[j]->id.first << "-" << it->second.rOvlp[j]->id.second << ", ";
-		}
-		std::cout << std::endl << std::endl;
-	}
 }
