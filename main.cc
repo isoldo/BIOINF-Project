@@ -104,6 +104,12 @@ int main(int argc, char** argv) {
 		} else if (strcmp(argv[i],"-o") == 0) {
 			outputPath.assign(argv[++i]);
 			defaultOutput = 0;
+			std::ofstream outputFile (outputPath.c_str());
+			if (!outputFile) {
+				std::cout << "Cannot generate output file!" << std::endl << "Terminating." << std::endl;
+			} else {
+				outputFile.close();
+			}
 //			std::cout << "Output path: " << outputPath << std::endl;
 		} else {
 			std::cout << "invalid cli options" << std::endl << "Terminating" << std::endl;
@@ -173,5 +179,8 @@ int main(int argc, char** argv) {
 	} else {
 		std::cout << "Output to custom: " << outputPath << std::endl;
 	}
+	std::ofstream outputFile (outputPath.c_str());
+	outputFile << ">The result of the BOG goes here" << std::endl;
+	outputFile.close();
 	return 0;
 }
