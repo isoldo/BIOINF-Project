@@ -158,7 +158,7 @@ int main(int argc, char** argv) {
 	generatorPath += fastaPath;
 	generatorPath += " -d ";
 	generatorPath += fastaPath;
-	generatorPath += " - o ";
+	generatorPath += " -o ";
 	generatorPath += mhapPath;
 	std::cout << generatorPath << std::endl;
 	system(generatorPath.c_str());
