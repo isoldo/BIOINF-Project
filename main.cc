@@ -81,6 +81,9 @@ std::vector<int> result;
 int isDoveTail(mhapRead_t* mRead);
 int isLeftAligned(mhapRead_t* mRead);
 
+static void printmhapreads(void);
+static void printnodes(void);
+
 int main(int argc, char** argv) {
 	/*
 		int main() variables
@@ -152,7 +155,7 @@ int main(int argc, char** argv) {
 	}
 	if (fastaPath.empty() || mhapPath.empty()) {
 		std::cout << "Please provide both *.fasta and *.mhap files!" << std::endl;
-		return 1;
+//		return 1;
 	}
 	/*
 		open input file (fasta or mhap)
@@ -188,6 +191,9 @@ int main(int argc, char** argv) {
 		// push_back to a vector of reads
 		mhapReads.push_back(cRead);
 	}
+	std::cout << mhapReads.size() << std::endl;
+	//printmhapreads();
+
 
 	/*
 		generate read and overlap contexts
@@ -227,14 +233,17 @@ int main(int argc, char** argv) {
 		nodes[ixf] = bNodeF;
 		nodes[ixs] = bNodeS;
 	}
-
-	for (int i=0; i<nodes.size(); ++i) {
+	std::cout << nodes.size() << std::endl;
+	printnodes();
+	for (std::map<int,BOGNode_t>::iterator it=nodes.begin(); it!=nodes.end(); ++it) {
 		// sort by Jaccard score which is not exactly Jaccard score when mhap comes from graphmap but ok
-		std::sort(nodes[i].lOvlp.begin(),nodes[i].lOvlp.end(),cmpNodes);
-		std::sort(nodes[i].rOvlp.begin(),nodes[i].rOvlp.end(),cmpNodes);
-		if (minJaccardScore > nodes[i].rOvlp[0]->jaccardScore) {
-			minJaccardScore > nodes[i].rOvlp[0]->jaccardScore;
-			minJaccardIx = i;
+		std::sort(it->second.lOvlp.begin(),it->second.lOvlp.end(),cmpNodes);
+		std::sort(it->second.rOvlp.begin(),it->second.rOvlp.end(),cmpNodes);
+		if (!std::cout << it->second.rOvlp.empty()) {
+			if (minJaccardScore > it->second.rOvlp[0]->jaccardScore) {
+				minJaccardScore = it->second.rOvlp[0]->jaccardScore;
+				minJaccardIx = it->first;
+			}
 		}
 	}
 	// thats it, we have our densely populated overlap graph
@@ -287,4 +296,26 @@ int isDoveTail(mhapRead_t* mRead) {
 // not definitive
 int isLeftAligned(mhapRead_t* mRead) {
 	return mRead->start.first == 0;
+}
+
+static void printmhapreads(void) {
+	for (int i=0; i<mhapReads.size(); ++i) {
+		std::cout << mhapReads[i].id.first << " " << mhapReads[i].id.second << " " << mhapReads[i].jaccardScore << " " << mhapReads[i].smm << " " << mhapReads[i].rc.first << " " << mhapReads[i].start.first << " " << mhapReads[i].end.first << " " << mhapReads[i].l.first << " " << mhapReads[i].rc.second << " " << mhapReads[i].start.second << " " << mhapReads[i].end.second << " " << mhapReads[i].l.second << std::endl;
+	}
+}
+
+static void printnodes(void) {
+	for (std::map<int,BOGNode_t>::iterator it = nodes.begin(); it != nodes.end(); ++it) {
+		std::cout << "Node: " << it->first << std::endl;
+		std::cout << "lOvlp: ";
+		for (int j=0; j<it->second.lOvlp.size(); ++j) {
+			std::cout << it->second.lOvlp[j]->id.first << "-" << it->second.lOvlp[j]->id.second << ", ";
+		}
+		std::cout << std::endl;
+		std::cout << "rOvlp: ";
+		for (int j=0; j<it->second.rOvlp.size(); ++j) {
+			std::cout << it->second.rOvlp[j]->id.first << "-" << it->second.rOvlp[j]->id.second << ", ";
+		}
+		std::cout << std::endl << std::endl;
+	}
 }
