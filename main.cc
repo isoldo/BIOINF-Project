@@ -53,7 +53,6 @@ typedef struct {
 } mhapRead_t;
 
 typedef struct {
-	int id;
 	std::vector<mhapRead_t*> lOvlp;
 	std::vector<mhapRead_t*> rOvlp;
 } BOGNode_t;
@@ -62,8 +61,14 @@ typedef struct {
 	Global variables
 */
 
-std::vector<BOGNode_t> nodes;
+std::map<int,BOGNode_t> nodes;
 std::vector<mhapRead_t> mhapReads;
+
+/*
+	local function declarations
+*/
+int isDoveTail(mhapRead_t* mRead);
+int isLeftAligned(mhapRead_t* mRead);
 
 int main(int argc, char** argv) {
 	/*
@@ -173,11 +178,36 @@ int main(int argc, char** argv) {
 
 	/*
 		generate read and overlap contexts
-	*/
-
-	/*
 		build the complete OVERLAP GRAPH
 	*/
+	for (int i = 0; i<mhapReads.size(); ++i) {
+		mhapRead_t* cRead = &mhapReads[i];
+		BOGNode_t bNodeF,bNodeS;
+		int ixf = cRead->id.first;
+		int ixs = cRead->id.second;
+		
+		// load existing map record
+		if (nodes.end() != (std::map<int,BOGNode_t>::iterator it = nodes.find(ixf))) {
+			&bNodeF = &nodes[ixf];
+		}
+		if (nodes.end() != (std::map<int,BOGNode_t>::iterator it = nodes.find(ixs))) {
+			&bNodeS = &nodes[ixs];
+		}
+		// ignore non-dovetail overlaps
+		if (isDoveTail(cRead)) {
+			if (isLeftAligned(cRead)) {
+				// add to left overlaps
+				bNodeF.lOvlp.push_back(cRead);
+				bNodeS.rOvlp.push_back(cRead);
+			} else {
+				// add to right overlaps
+				bNodeF.rOvlp.push_back(cRead);
+				bNodeS.lOvlp.push_back(cRead);
+			}
+		}
+		nodes[ixf] = bNodeF;
+		nodes[ixs] = bNodeS;
+	}
 
 	/*
 		THE ALGORITHM
@@ -202,4 +232,25 @@ int main(int argc, char** argv) {
 	outputFile << ">The result of the BOG goes here" << std::endl;
 	outputFile.close();
 	return 0;
+}
+
+// not definitive
+int isDoveTail(mhapRead_t* mRead) {
+	if (mRead->start.first != 0 && mRead->end.first != (mRead->l.first-1)) {
+		// doesnt start at the beginning nor does it end at the end, this is a pratial overlap
+		return 0;
+	}
+	if (mRead->start.second != 0 && mRead->end.second != (mRead->l.second-1)) {
+		// doesnt start at the beginning nor does it end at the end, this is a pratial overlap
+		return 0;
+	}
+	return 1;
+}
+
+// a left aligned overlap is the one where the first index overlaps form 0 to x, x<l-1
+// the end of the second read overlaps with the beginning of the first read
+
+// not definitive
+int isLeftAligned(mhapRead_t* mRead) {
+	return mRead->start.first == 0;
 }
