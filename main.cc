@@ -194,7 +194,7 @@ int main(int argc, char** argv) {
 		// push_back to a vector of reads
 		mhapReads.push_back(cRead);
 	}
-	std::cout << mhapReads.size() << std::endl;
+	//std::cout << mhapReads.size() << std::endl;
 
 	
 
@@ -239,7 +239,7 @@ int main(int argc, char** argv) {
 		nodes[ixf] = bNodeF;
 		nodes[ixs] = bNodeS;
 	}
-	std::cout << nodes.size() << std::endl;
+	//std::cout << nodes.size() << std::endl;
 	//printnodes();
 	for (std::map<int,BOGNode_t>::iterator it=nodes.begin(); it!=nodes.end(); ++it) {
 		if (it->second.lOvlp.size() != 0 || it->second.rOvlp.size() != 0) {
@@ -249,7 +249,7 @@ int main(int argc, char** argv) {
 			readIxs.erase(it->first);
 		}
 	}
-	std::cout << "Cleaned: " << nodes.size() - nodes_filtered.size() << std::endl;
+	//std::cout << "Cleaned: " << nodes.size() - nodes_filtered.size() << std::endl;
 	for (std::map<int,BOGNode_t>::iterator it=nodes_filtered.begin(); it!=nodes_filtered.end(); ++it) {
 		// sort by Jaccard score which is not exactly Jaccard score when mhap comes from graphmap but ok
 		std::sort(it->second.lOvlp.begin(),it->second.lOvlp.end(),cmpNodes);
@@ -283,7 +283,7 @@ int main(int argc, char** argv) {
 
 	// pick the node with the worst left overlap Jaccard score - this will be our starting node
 	std::vector<std::vector<mhapRead_t*> > mhapResults;
-	std::cout << "#reads: " << readIxs.size() << std::endl;
+	//std::cout << "#reads: " << readIxs.size() << std::endl;
 	for (std::set<int>::iterator sIt = starters.begin(); sIt != starters.end(); sIt++) {
 		std::vector<int> result;
 		std::vector<mhapRead_t*> mhapResult;
@@ -292,7 +292,7 @@ int main(int argc, char** argv) {
 		currentSet.erase(minJaccardIx);
 		while(currentSet.size()) {
 			int currentReadIx = result.back();
-			std::cout << "Current Read: " << currentReadIx << std::endl;
+			//std::cout << "Current Read: " << currentReadIx << std::endl;
 			std::pair<int,int> indices;
 			if (!nodes_filtered[currentReadIx].rOvlp.empty()) {
 				indices = nodes_filtered[currentReadIx].rOvlp[0]->id;
@@ -306,21 +306,21 @@ int main(int argc, char** argv) {
 						mhapResult.push_back(nodes_filtered[currentReadIx].rOvlp[0]);
 						currentSet.erase(indices.first);
 					} else {
-						std::cout << "BOINK" << std::endl;
+						//std::cout << "BOINK" << std::endl;
 						results.push_back(result);
 						mhapResults.push_back(mhapResult);
 						break;
 					}
 				}
 			} else {
-				std::cout << currentReadIx << " has no rOvlp" << std::endl;
+				//std::cout << currentReadIx << " has no rOvlp" << std::endl;
 				results.push_back(result);
 				break;
 			}
 		}
 	}
 
-	std::cout << "Unused reads: " << readIxs.size() << std::endl;
+	//std::cout << "Unused reads: " << readIxs.size() << std::endl;
 
 	std::vector<std::vector<int> >::iterator itMax = results.begin();
 	for (std::vector<std::vector<int> >::iterator it = results.begin(); it!=results.end(); ++it) {
@@ -359,11 +359,11 @@ int main(int argc, char** argv) {
 	std::vector<int> finalReads = *itMax;
 	std::vector<mhapRead_t*> finalMhapReads = *mitMax;
 
-	// for (std::vector<int>::iterator it = finalReads.begin(); it != finalReads.end(); ++it) {
-	// 	std::cout << *it << " ";
-	// 	finalFastaResult += fastaReads[*it];
-	// }
-	std::vector<int>::iterator finalReadIx = finalReads.begin();
+	 for (std::vector<int>::iterator it = finalReads.begin(); it != finalReads.end(); ++it) {
+	 	//std::cout << *it << " ";
+	 	finalFastaResult += fastaReads[*it];
+	}
+	/*std::vector<int>::iterator finalReadIx = finalReads.begin();
 	std::vector<mhapRead_t*>::iterator finalMhapIx = finalMhapReads.begin();
 	while (finalReadIx != finalReads.end()) {
 		mhapRead_t localMhap = *(*finalMhapIx);
@@ -377,16 +377,13 @@ int main(int argc, char** argv) {
 		}
 		++finalReadIx;
 		++finalMhapIx;
-	}
+	}*/
 
 	/*
 		Notify about success, return 0
 	*/
-	if (defaultOutput) {
-		std::cout << "Output to default: " << outputPath << std::endl;
-	} else {
-		std::cout << "Output to custom: " << outputPath << std::endl;
-	}
+	std::cout << "Output to: " << outputPath << std::endl;
+	
 	std::ofstream outputFile (outputPath.c_str());
 	outputFile << ">The result of the BOG goes here" << std::endl;
 	outputFile << finalFastaResult << std::endl;
