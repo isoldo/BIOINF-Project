@@ -93,7 +93,7 @@ int main(int argc, char** argv) {
 		std::cout << "Invalid number of parameters! Expected " << ARGC_VAL-1 << ", got " << argc-1 << ".\r\nTerminating." << std::endl;
 		return 1;
 	} else {
-		std::cout << "Input parameters OK" << std::endl;
+//		std::cout << "Input parameters OK" << std::endl;
 	}
 	for (int i=1; i<argc; ++i) {
 		if (strcmp(argv[i],"-i") == 0) {
