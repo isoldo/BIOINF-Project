@@ -35,7 +35,7 @@ SOFTWARE.
 	To be moved to a separate header file
 */
 
-#define ARGC_VAL (1+4)
+#define ARGC_VAL_MIN (1+2)
 
 /*
 	Custom structs
@@ -83,14 +83,16 @@ int main(int argc, char** argv) {
 	/*
 		int main() variables
 	*/
+	int defaultOutput = 1;
 	std::string inputPath;
-	std::string outputPath;
+	std::string outputPath = "output.fasta";
+	
 	/*
 		parse input arguments
 	*/
 	
-	if (argc != ARGC_VAL) {
-		std::cout << "Invalid number of parameters! Expected " << ARGC_VAL-1 << ", got " << argc-1 << ".\r\nTerminating." << std::endl;
+	if (argc < ARGC_VAL_MIN) {
+		std::cout << "Too few parameters! Expected at least " << ARGC_VAL_MIN-1 << ", got " << argc-1 << ".\r\nTerminating." << std::endl;
 		return 1;
 	} else {
 //		std::cout << "Input parameters OK" << std::endl;
@@ -115,6 +117,7 @@ int main(int argc, char** argv) {
 //			std::cout << "Input extension " << inputExtension << std::endl;
 		} else if (strcmp(argv[i],"-o") == 0) {
 			outputPath.assign(argv[++i]);
+			defaultOutput = 0;
 //			std::cout << "Output path: " << outputPath << std::endl;
 		} else {
 			std::cout << "invalid cli options" << std::endl << "Terminating" << std::endl;
@@ -179,5 +182,10 @@ int main(int argc, char** argv) {
 	/*
 		Notify about success, return 0
 	*/
+	if (defaultOutput) {
+		std::cout << "Output to default: " << outputPath << std::endl;
+	} else {
+		std::cout << "Output to custom: " << outputPath << std::endl;
+	}
 	return 0;
 }
