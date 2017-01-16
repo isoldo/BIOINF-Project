@@ -335,7 +335,7 @@ int main(int argc, char** argv) {
 	*/
 
 	std::ifstream fastaInput(fastaPath.c_str(),std::ifstream::in);
-	if (!inputFile) {
+	if (!fastaInput) {
 		std::cout << fastaPath << ": No such file" << std::endl;
 		return 1;
 	}
