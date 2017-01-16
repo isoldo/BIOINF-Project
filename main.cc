@@ -35,7 +35,7 @@ SOFTWARE.
 	To be moved to a separate header file
 */
 
-#define ARGC_VAL_MIN (1+2)
+#define ARGC_VAL_MIN (1+4)
 
 /*
 	Custom structs
@@ -70,7 +70,8 @@ int main(int argc, char** argv) {
 		int main() variables
 	*/
 	int defaultOutput = 1;
-	std::string inputPath;
+	std::string mhapPath;
+	std::string fastaPath;
 	std::string outputPath = "output.fasta";
 	
 	/*
@@ -84,15 +85,15 @@ int main(int argc, char** argv) {
 //		std::cout << "Input parameters OK" << std::endl;
 	}
 	for (int i=1; i<argc; ++i) {
-		if (strcmp(argv[i],"-i") == 0) {
-			inputPath.assign(argv[++i]);
+		if (strcmp(argv[i],"-mhap") == 0) {
+			mhapPath.assign(argv[++i]);
 			// accept only *.mhap for now
 			std::string inputExtension;
-			std::string::size_type idx = inputPath.rfind('.');
+			std::string::size_type idx = mhapPath.rfind('.');
 			if (idx != std::string::npos) {
-				inputExtension = inputPath.substr(idx);
+				inputExtension = mhapPath.substr(idx);
 				if (strcmp(inputExtension.c_str(),".mhap")) {
-					std::cout << "Only *.mhap is currently supported!" << std::endl << "Terminating." << std::endl;
+					std::cout << "Please provide a *.mhap file. (got " <<  inputExtension << ")" << std::endl << "Terminating." << std::endl;
 					return 1;
 				}
 			} else {
@@ -101,6 +102,21 @@ int main(int argc, char** argv) {
 			}
 //			std::cout << "Input path: " << inputPath << std::endl;
 //			std::cout << "Input extension " << inputExtension << std::endl;
+		} else if (strcmp(argv[i],"-fasta") == 0) {
+			fastaPath.assign(argv[++i]);
+			// accept only *.mhap for now
+			std::string inputExtension;
+			std::string::size_type idx = fastaPath.rfind('.');
+			if (idx != std::string::npos) {
+				inputExtension = fastaPath.substr(idx);
+				if (strcmp(inputExtension.c_str(),".fasta")) {
+					std::cout << "Please provide a *.fasta file. (got " <<  inputExtension << ")" << std::endl << "Terminating." << std::endl;
+					return 1;
+				}
+			} else {
+				std::cout << "Provide input file extension!" << std::endl << "Terminating." << std::endl;
+				return 1;
+			}
 		} else if (strcmp(argv[i],"-o") == 0) {
 			outputPath.assign(argv[++i]);
 			defaultOutput = 0;
@@ -116,15 +132,18 @@ int main(int argc, char** argv) {
 			return 1;
 		}
 	}
-
+	if (fastaPath.empty() || mhapPath.empty()) {
+		std::cout << "Please provide both *.fasta and *.mhap files!" << std::endl;
+		return 1;
+	}
 	/*
 		open input file (fasta or mhap)
 			mhap is better, because conversion of ecoli_corrected.fasta to mhap (graphmap) takes about 70 minutes on 4 cores and 10 GB RAM
 	*/
 	// only mhap for now :)
-	std::ifstream inputFile(inputPath.c_str(),std::ifstream::in);
+	std::ifstream inputFile(mhapPath.c_str(),std::ifstream::in);
 	if (!inputFile) {
-		std::cout << inputPath <<": No such file" << std::endl;
+		std::cout << mhapPath <<": No such file" << std::endl;
 		return 1;
 	}
 	
