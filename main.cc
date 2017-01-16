@@ -35,9 +35,47 @@ SOFTWARE.
 */
 
 #define ARGC_VAL (1+4)
+
+/*
+	Custom structs
+	To be moved to spearate header file
+*/
+
+typedef struct {
+	int id;
+	int l;
+	int baseStart;
+	int baseEnd;
+	int baseRC;
+	int readStart;
+	int readEnd;
+	int readRC;
+	double jaccardScore;
+	int smm;
+} readContext_t;
+
+typedef struct {
+	int id;
+	int l;
+	std::vector<readContext_t> lOvlp;
+	std::vector<readContext_t> rOvlp;
+} read_t;
+
+typedef struct {
+	std::pair<int,int> id;
+	std::pair<int,int> l;
+	std::pair<int,int> start;
+	std::pair<int,int> end;
+	std::pair<int,int> rc;
+	double jaccardScore;
+	int smm;
+} mhapRead_t;
+
 /*
 	Global variables
 */
+
+std::vector<read_t> reads;
 
 int main(int argc, char** argv) {
 	/*
