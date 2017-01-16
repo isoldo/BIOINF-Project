@@ -43,26 +43,6 @@ SOFTWARE.
 */
 
 typedef struct {
-	int id;
-	int l;
-	int baseStart;
-	int baseEnd;
-	int baseRC;
-	int readStart;
-	int readEnd;
-	int readRC;
-	double jaccardScore;
-	int smm;
-} readContext_t;
-
-typedef struct {
-	int id;
-	int l;
-	std::vector<readContext_t> lOvlp;
-	std::vector<readContext_t> rOvlp;
-} read_t;
-
-typedef struct {
 	std::pair<int,int> id;
 	std::pair<int,int> l;
 	std::pair<int,int> start;
@@ -72,11 +52,17 @@ typedef struct {
 	int smm;
 } mhapRead_t;
 
+typedef struct {
+	int id;
+	std::vector<mhapRead_t*> lOvlp;
+	std::vector<mhapRead_t*> rOvlp;
+} BOGNode_t;
+
 /*
 	Global variables
 */
 
-std::vector<read_t> reads;
+std::vector<BOGNode_t> nodes;
 std::vector<mhapRead_t> mhapReads;
 
 int main(int argc, char** argv) {
