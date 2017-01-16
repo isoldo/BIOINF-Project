@@ -83,11 +83,19 @@ int main(int argc, char** argv) {
 	}
 
 	/*
-		open input files (fasta or mhap)
+		open input file (fasta or mhap)
 			mhap is better, because conversion of ecoli_corrected.fasta to mhap (graphmap) takes about 70 minutes on 4 cores and 10 GB RAM
 	*/
-	// mhap for now :)
+	// only mhap for now :)
 	std::ifstream inputFile(inputPath.c_str(),std::ifstream::in);
+	if (!inputFile) {
+		std::cout << inputPath <<": No such file" << std::endl;
+		return 1;
+	}
+	
+	/*
+		parse input file
+	*/
 	std::string line;
 	while (std::getline(inputFile,line)) {
 		std::istringstream inStream(line);
@@ -99,11 +107,8 @@ int main(int argc, char** argv) {
 		inStream >> rc1 >> s1 >> e1 >> l1;
 		inStream >> rc2 >> s2 >> e2 >> l2;
 //		std::cout << ix1 << " " << ix2 << " " << js << " " << smm << " " << rc1 << " " << s1 << " " << e1 << " " << l1 << " " << rc2 << " " << s2 << " " << e2 << " " << l2 << std::endl;
-		// psuh_back to a vector of reads
+		// push_back to a vector of reads
 	}
-	/*
-		parse input file
-	*/
 
 	/*
 		generate read and overlap contexts
