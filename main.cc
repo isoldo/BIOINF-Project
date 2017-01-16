@@ -74,7 +74,8 @@ std::map<int,BOGNode_t> nodes;
 std::map<int,BOGNode_t> nodes_filtered;
 std::vector<mhapRead_t> mhapReads;
 std::set<int> readIxs;
-std::vector<int> result;
+std::set<int> starters;
+std::vector<std::vector<int> > results;
 
 /*
 	local function declarations
@@ -254,15 +255,16 @@ int main(int argc, char** argv) {
 				minJaccardScore = it->second.lOvlp[0]->jaccardScore;
 				minJaccardIx = it->first;
 			}
-		}// else {
+		}else {
 			//minJaccardScore = 0.0;
-			//minJaccardIx = it->first;
-		//}
+			starters.insert(it->first);
+		}
 	}
+	//minJaccardIx = 11;
 	//std::cout << "MJI" << minJaccardIx << std::endl;
 
 	//for (std::vector<mhapRead_t*>::iterator it = nodes_filtered[minJaccardIx].rOvlp.begin(); it!=nodes_filtered[minJaccardIx].rOvlp.end(); ++it) {
-		//std::cout << (*it)->jaccardScore << std::endl;
+	//	std::cout << (*it)->jaccardScore << std::endl;
 	//}
 	//return 0;
 
@@ -277,27 +279,35 @@ int main(int argc, char** argv) {
 
 	// pick the node with the worst left overlap Jaccard score - this will be our starting node
 	std::cout << "#reads: " << readIxs.size() << std::endl;
-	result.push_back(minJaccardIx);
-	readIxs.erase(minJaccardIx);
-	while(readIxs.size()) {
-		int currentReadIx = result.back();
-		std::cout << "Current Read: " << currentReadIx << std::endl;
-		std::pair<int,int> indices;
-		if (!nodes_filtered[currentReadIx].rOvlp.empty()) {
-			indices = nodes_filtered[currentReadIx].rOvlp[0]->id;
-			if (indices.first == currentReadIx && readIxs.find(indices.second)!=readIxs.end()) {
-				result.push_back(indices.second);
-				readIxs.erase(indices.second);
-			} else if (readIxs.find(indices.first)!=readIxs.end()) {
-				result.push_back(indices.first);
-				readIxs.erase(indices.first);
-			}
-			else {
+	for (std::set<int>::iterator sIt = starters.begin(); sIt != starters.end(); sIt++) {
+		std::vector<int> result;
+		std::set<int> currentSet = readIxs;
+		result.push_back(*sIt);
+		currentSet.erase(minJaccardIx);
+		while(currentSet.size()) {
+			int currentReadIx = result.back();
+			std::cout << "Current Read: " << currentReadIx << std::endl;
+			std::pair<int,int> indices;
+			if (!nodes_filtered[currentReadIx].rOvlp.empty()) {
+				indices = nodes_filtered[currentReadIx].rOvlp[0]->id;
+				if (indices.first == currentReadIx && currentSet.find(indices.second)!=currentSet.end()) {
+					result.push_back(indices.second);
+					currentSet.erase(indices.second);
+				} else {
+					if (currentSet.find(indices.first)!=currentSet.end()) {
+						result.push_back(indices.first);
+						currentSet.erase(indices.first);
+					} else {
+						std::cout << "BOINK" << std::endl;
+						results.push_back(result);
+						break;
+					}
+				}
+			} else {
+				std::cout << currentReadIx << " has no rOvlp" << std::endl;
+				results.push_back(result);
 				break;
 			}
-		} else {
-			std::cout << currentReadIx << "has no rOvlp" << std::endl;
-			break;
 		}
 	}
 
