@@ -316,7 +316,17 @@ int main(int argc, char** argv) {
 	/*
 		Take the BOG and write i in FASTA format
 	*/
-
+	std::vector<std::vector<int> >::iterator itMax = results.begin();
+	for (std::vector<std::vector<int> >::iterator it = results.begin(); it!=results.end(); ++it) {
+		if ( (*it).size() > (*itMax).size() ) {
+			itMax = it;
+		}
+	}
+	std::vector<int> abc = *itMax;
+	for (std::vector<int>::iterator it = abc.begin(); it != abc.end(); ++it) {
+		std::cout << *it << " ";
+	}
+	std::cout << std::endl;
 	/*
 		Notify about success, return 0
 	*/
