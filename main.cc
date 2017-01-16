@@ -26,6 +26,7 @@ SOFTWARE.
 #include <vector>
 #include <utility>
 #include <map>
+#include <set>
 #include <algorithm>
 #include <string>
 #include <cstring>
@@ -58,12 +59,21 @@ typedef struct {
 	std::vector<mhapRead_t*> rOvlp;
 } BOGNode_t;
 
+bool cmpNodes(mhapRead_t* a, mhapRead_t* b) {
+	if (a->jaccardScore != b->jaccardScore) {
+		return a->jaccardScore < b->jaccardScore;
+	}
+	return a->smm > b->smm;
+}
+
 /*
 	Global variables
 */
 
 std::map<int,BOGNode_t> nodes;
 std::vector<mhapRead_t> mhapReads;
+std::set<int> readIxs;
+std::vector<int> result;
 
 /*
 	local function declarations
@@ -79,6 +89,8 @@ int main(int argc, char** argv) {
 	std::string mhapPath;
 	std::string fastaPath;
 	std::string outputPath = "output.fasta";
+	double minJaccardScore = 1.0;
+	int minJaccardIx;
 	
 	/*
 		parse input arguments
@@ -191,10 +203,14 @@ int main(int argc, char** argv) {
 		std::map<int,BOGNode_t>::iterator it = nodes.find(ixf);
 		if (it != nodes.end()) {
 			bNodeF = nodes[ixf];
+		} else {
+			readIxs.insert(ixf);
 		}
 		it = nodes.find(ixs);
 		if (it != nodes.end()) {
 			bNodeS = nodes[ixs];
+		} else {
+			readIxs.insert(ixs);
 		}
 		// ignore non-dovetail overlaps
 		if (isDoveTail(cRead)) {
@@ -212,12 +228,27 @@ int main(int argc, char** argv) {
 		nodes[ixs] = bNodeS;
 	}
 
+	for (int i=0; i<nodes.size(); ++i) {
+		// sort by Jaccard score which is not exactly Jaccard score when mhap comes from graphmap but ok
+		std::sort(nodes[i].lOvlp.begin(),nodes[i].lOvlp.end(),cmpNodes);
+		std::sort(nodes[i].rOvlp.begin(),nodes[i].rOvlp.end(),cmpNodes);
+		if (minJaccardScore > nodes[i].rOvlp[0]->jaccardScore) {
+			minJaccardScore > nodes[i].rOvlp[0]->jaccardScore;
+			minJaccardIx = i;
+		}
+	}
+	// thats it, we have our densely populated overlap graph
+
 	/*
 		THE ALGORITHM
 		Travel through the overlap graph, remove contained reads, remove cycles, pick best overlaps
 		Create the best overlap graph
 			1 fasta read per chromosome is optimum
 	*/
+
+	// pick the node with the worst left overlap Jaccard score - this will be our starting node
+	result.push_back(minJaccardIx);
+	readIxs.erase(minJaccardIx);
 
 	/*
 		Take the BOG and write i in FASTA format
