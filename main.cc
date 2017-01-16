@@ -25,6 +25,7 @@ SOFTWARE.
 #include <iostream>
 #include <vector>
 #include <utility>
+#include <map>
 #include <algorithm>
 #include <string>
 #include <cstring>
@@ -187,11 +188,13 @@ int main(int argc, char** argv) {
 		int ixs = cRead->id.second;
 		
 		// load existing map record
-		if (nodes.end() != (std::map<int,BOGNode_t>::iterator it = nodes.find(ixf))) {
-			&bNodeF = &nodes[ixf];
+		std::map<int,BOGNode_t>::iterator it = nodes.find(ixf);
+		if (it != nodes.end()) {
+			bNodeF = nodes[ixf];
 		}
-		if (nodes.end() != (std::map<int,BOGNode_t>::iterator it = nodes.find(ixs))) {
-			&bNodeS = &nodes[ixs];
+		it = nodes.find(ixs);
+		if (it != nodes.end()) {
+			bNodeS = nodes[ixs];
 		}
 		// ignore non-dovetail overlaps
 		if (isDoveTail(cRead)) {
