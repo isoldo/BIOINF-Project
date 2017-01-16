@@ -22,10 +22,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <stdio.h>
+#include <iostream>
 #include <vector>
 #include <algorithm>
+#include <string>
+#include <cstring>
 
+/*
+	Program defines
+	To be moved to a separate header file
+*/
+
+#define ARGC_VAL (1+4)
 /*
 	Global variables
 */
@@ -34,10 +42,30 @@ int main(int argc, char** argv) {
 	/*
 		int main() variables
 	*/
-
+	std::string inputPath;
+	std::string outputPath;
 	/*
 		parse input arguments
 	*/
+	
+	if (argc != ARGC_VAL) {
+		std::cout << "Invalid number of parameters! Expected " << ARGC_VAL-1 << ", got " << argc-1 << ".\r\nTerminating." << std::endl;
+		return 1;
+	} else {
+		std::cout << "Input parameters OK" << std::endl;
+	}
+	for (int i=1; i<argc; ++i) {
+		if (strcmp(argv[i],"-i") == 0) {
+			inputPath.assign(argv[++i]);
+			std::cout << "Input path: " << inputPath << std::endl;
+		} else if (strcmp(argv[i],"-o") == 0) {
+			outputPath.assign(argv[++i]);
+			std::cout << "Output path: " << outputPath << std::endl;
+		} else {
+			std::cout << "invalid cli options" << std::endl << "Terminating" << std::endl;
+			return 1;
+		}
+	}
 
 	/*
 		open input files (fasta or mhap)
