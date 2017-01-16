@@ -61,7 +61,7 @@ typedef struct {
 
 bool cmpNodes(mhapRead_t* a, mhapRead_t* b) {
 	if (a->jaccardScore != b->jaccardScore) {
-		return a->jaccardScore < b->jaccardScore;
+		return a->jaccardScore > b->jaccardScore;
 	}
 	return a->smm > b->smm;
 }
@@ -71,6 +71,7 @@ bool cmpNodes(mhapRead_t* a, mhapRead_t* b) {
 */
 
 std::map<int,BOGNode_t> nodes;
+std::map<int,BOGNode_t> nodes_filtered;
 std::vector<mhapRead_t> mhapReads;
 std::set<int> readIxs;
 std::vector<int> result;
@@ -234,18 +235,37 @@ int main(int argc, char** argv) {
 		nodes[ixs] = bNodeS;
 	}
 	std::cout << nodes.size() << std::endl;
-	printnodes();
+	//printnodes();
 	for (std::map<int,BOGNode_t>::iterator it=nodes.begin(); it!=nodes.end(); ++it) {
+		if (it->second.lOvlp.size() != 0 || it->second.rOvlp.size() != 0) {
+			// these reads have at least one overlaps
+			nodes_filtered[it->first] = it->second;
+		} else {
+			readIxs.erase(it->first);
+		}
+	}
+	std::cout << "Cleaned: " << nodes.size() - nodes_filtered.size() << std::endl;
+	for (std::map<int,BOGNode_t>::iterator it=nodes_filtered.begin(); it!=nodes_filtered.end(); ++it) {
 		// sort by Jaccard score which is not exactly Jaccard score when mhap comes from graphmap but ok
 		std::sort(it->second.lOvlp.begin(),it->second.lOvlp.end(),cmpNodes);
 		std::sort(it->second.rOvlp.begin(),it->second.rOvlp.end(),cmpNodes);
-		if (!std::cout << it->second.rOvlp.empty()) {
-			if (minJaccardScore > it->second.rOvlp[0]->jaccardScore) {
-				minJaccardScore = it->second.rOvlp[0]->jaccardScore;
+		if (!it->second.lOvlp.empty()) {
+			if (minJaccardScore > it->second.lOvlp[0]->jaccardScore) {
+				minJaccardScore = it->second.lOvlp[0]->jaccardScore;
 				minJaccardIx = it->first;
 			}
-		}
+		}// else {
+			//minJaccardScore = 0.0;
+			//minJaccardIx = it->first;
+		//}
 	}
+	//std::cout << "MJI" << minJaccardIx << std::endl;
+
+	//for (std::vector<mhapRead_t*>::iterator it = nodes_filtered[minJaccardIx].rOvlp.begin(); it!=nodes_filtered[minJaccardIx].rOvlp.end(); ++it) {
+		//std::cout << (*it)->jaccardScore << std::endl;
+	//}
+	//return 0;
+
 	// thats it, we have our densely populated overlap graph
 
 	/*
@@ -256,8 +276,32 @@ int main(int argc, char** argv) {
 	*/
 
 	// pick the node with the worst left overlap Jaccard score - this will be our starting node
+	std::cout << "#reads: " << readIxs.size() << std::endl;
 	result.push_back(minJaccardIx);
 	readIxs.erase(minJaccardIx);
+	while(readIxs.size()) {
+		int currentReadIx = result.back();
+		std::cout << "Current Read: " << currentReadIx << std::endl;
+		std::pair<int,int> indices;
+		if (!nodes_filtered[currentReadIx].rOvlp.empty()) {
+			indices = nodes_filtered[currentReadIx].rOvlp[0]->id;
+			if (indices.first == currentReadIx && readIxs.find(indices.second)!=readIxs.end()) {
+				result.push_back(indices.second);
+				readIxs.erase(indices.second);
+			} else if (readIxs.find(indices.first)!=readIxs.end()) {
+				result.push_back(indices.first);
+				readIxs.erase(indices.first);
+			}
+			else {
+				break;
+			}
+		} else {
+			std::cout << currentReadIx << "has no rOvlp" << std::endl;
+			break;
+		}
+	}
+
+	std::cout << "Unused reads: " << readIxs.size() << std::endl;
 
 	/*
 		Take the BOG and write i in FASTA format
