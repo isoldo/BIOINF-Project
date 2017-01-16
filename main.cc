@@ -282,9 +282,11 @@ int main(int argc, char** argv) {
 	*/
 
 	// pick the node with the worst left overlap Jaccard score - this will be our starting node
+	std::vector<std::vector<mhapRead_t*> > mhapResults;
 	std::cout << "#reads: " << readIxs.size() << std::endl;
 	for (std::set<int>::iterator sIt = starters.begin(); sIt != starters.end(); sIt++) {
 		std::vector<int> result;
+		std::vector<mhapRead_t*> mhapResult;
 		std::set<int> currentSet = readIxs;
 		result.push_back(*sIt);
 		currentSet.erase(minJaccardIx);
@@ -296,14 +298,17 @@ int main(int argc, char** argv) {
 				indices = nodes_filtered[currentReadIx].rOvlp[0]->id;
 				if (indices.first == currentReadIx && currentSet.find(indices.second)!=currentSet.end()) {
 					result.push_back(indices.second);
+					mhapResult.push_back(nodes_filtered[currentReadIx].rOvlp[0]);
 					currentSet.erase(indices.second);
 				} else {
 					if (currentSet.find(indices.first)!=currentSet.end()) {
 						result.push_back(indices.first);
+						mhapResult.push_back(nodes_filtered[currentReadIx].rOvlp[0]);
 						currentSet.erase(indices.first);
 					} else {
 						std::cout << "BOINK" << std::endl;
 						results.push_back(result);
+						mhapResults.push_back(mhapResult);
 						break;
 					}
 				}
@@ -317,18 +322,18 @@ int main(int argc, char** argv) {
 
 	std::cout << "Unused reads: " << readIxs.size() << std::endl;
 
-	
 	std::vector<std::vector<int> >::iterator itMax = results.begin();
 	for (std::vector<std::vector<int> >::iterator it = results.begin(); it!=results.end(); ++it) {
 		if ( (*it).size() > (*itMax).size() ) {
 			itMax = it;
 		}
 	}
-	std::vector<int> abc = *itMax;
-	for (std::vector<int>::iterator it = abc.begin(); it != abc.end(); ++it) {
-		std::cout << *it << " ";
+	std::vector<std::vector<mhapRead_t*> >::iterator mitMax = mhapResults.begin();
+	for (std::vector<std::vector<mhapRead_t*> >::iterator it = mhapResults.begin(); it!=mhapResults.end(); ++it) {
+		if ( (*it).size() > (*mitMax).size() ) {
+			mitMax = it;
+		}
 	}
-	std::cout << std::endl;
 
 	/*
 		Take the BOG and write i in FASTA format
@@ -351,9 +356,27 @@ int main(int argc, char** argv) {
 		}
 	}
 	std::string finalFastaResult;
-	for (std::vector<int>::iterator it = abc.begin(); it != abc.end(); ++it) {
-		std::cout << *it << " ";
-		finalFastaResult += fastaReads[*it];
+	std::vector<int> finalReads = *itMax;
+	std::vector<mhapRead_t*> finalMhapReads = *mitMax;
+
+	// for (std::vector<int>::iterator it = finalReads.begin(); it != finalReads.end(); ++it) {
+	// 	std::cout << *it << " ";
+	// 	finalFastaResult += fastaReads[*it];
+	// }
+	std::vector<int>::iterator finalReadIx = finalReads.begin();
+	std::vector<mhapRead_t*>::iterator finalMhapIx = finalMhapReads.begin();
+	while (finalReadIx != finalReads.end()) {
+		mhapRead_t localMhap = *(*finalMhapIx);
+
+		if (localMhap.id.first == *finalReadIx) {
+			finalFastaResult.append(fastaReads[localMhap.id.first].begin() + localMhap.start.first, fastaReads[localMhap.id.first].end() );
+			finalFastaResult.append(fastaReads[localMhap.id.second].begin() + localMhap.end.second, fastaReads[localMhap.id.second].end());
+		} else {
+			finalFastaResult.append(fastaReads[localMhap.id.second].begin() + localMhap.start.second, fastaReads[localMhap.id.second].end() );
+			finalFastaResult.append(fastaReads[localMhap.id.first].begin() + localMhap.end.first, fastaReads[localMhap.id.first].end());
+		}
+		++finalReadIx;
+		++finalMhapIx;
 	}
 
 	/*
