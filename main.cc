@@ -58,10 +58,24 @@ int main(int argc, char** argv) {
 	for (int i=1; i<argc; ++i) {
 		if (strcmp(argv[i],"-i") == 0) {
 			inputPath.assign(argv[++i]);
-			std::cout << "Input path: " << inputPath << std::endl;
+			// accept only *.mhap for now
+			std::string inputExtension;
+			std::string::size_type idx = inputPath.rfind('.');
+			if (idx != std::string::npos) {
+				inputExtension = inputPath.substr(idx);
+				if (strcmp(inputExtension.c_str(),".mhap")) {
+					std::cout << "Only *.mhap is currently supported!" << std::endl << "Terminating." << std::endl;
+					return 1;
+				}
+			} else {
+				std::cout << "Provide input file extension!" << std::endl << "Terminating." << std::endl;
+				return 1;
+			}
+//			std::cout << "Input path: " << inputPath << std::endl;
+//			std::cout << "Input extension " << inputExtension << std::endl;
 		} else if (strcmp(argv[i],"-o") == 0) {
 			outputPath.assign(argv[++i]);
-			std::cout << "Output path: " << outputPath << std::endl;
+//			std::cout << "Output path: " << outputPath << std::endl;
 		} else {
 			std::cout << "invalid cli options" << std::endl << "Terminating" << std::endl;
 			return 1;
@@ -85,6 +99,7 @@ int main(int argc, char** argv) {
 		inStream >> rc1 >> s1 >> e1 >> l1;
 		inStream >> rc2 >> s2 >> e2 >> l2;
 //		std::cout << ix1 << " " << ix2 << " " << js << " " << smm << " " << rc1 << " " << s1 << " " << e1 << " " << l1 << " " << rc2 << " " << s2 << " " << e2 << " " << l2 << std::endl;
+		// psuh_back to a vector of reads
 	}
 	/*
 		parse input file
