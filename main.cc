@@ -76,6 +76,7 @@ std::vector<mhapRead_t> mhapReads;
 std::set<int> readIxs;
 std::set<int> starters;
 std::vector<std::vector<int> > results;
+std::map<int,std::string> fastaReads;
 
 /*
 	local function declarations
@@ -194,6 +195,9 @@ int main(int argc, char** argv) {
 		mhapReads.push_back(cRead);
 	}
 	std::cout << mhapReads.size() << std::endl;
+
+	
+
 	//printmhapreads();
 
 
@@ -313,9 +317,7 @@ int main(int argc, char** argv) {
 
 	std::cout << "Unused reads: " << readIxs.size() << std::endl;
 
-	/*
-		Take the BOG and write i in FASTA format
-	*/
+	
 	std::vector<std::vector<int> >::iterator itMax = results.begin();
 	for (std::vector<std::vector<int> >::iterator it = results.begin(); it!=results.end(); ++it) {
 		if ( (*it).size() > (*itMax).size() ) {
@@ -327,6 +329,33 @@ int main(int argc, char** argv) {
 		std::cout << *it << " ";
 	}
 	std::cout << std::endl;
+
+	/*
+		Take the BOG and write i in FASTA format
+	*/
+
+	std::ifstream fastaInput(fastaPath.c_str(),std::ifstream::in);
+	if (!inputFile) {
+		std::cout << fastaPath << ": No such file" << std::endl;
+		return 1;
+	}
+	int counter = 0;
+	while(std::getline(fastaInput,line)) {
+		std::istringstream inStream(line);
+		std::string currLine;
+		inStream >> currLine;
+		if (currLine[0] == '>') {
+			++ counter;
+		} else {
+			fastaReads[counter] += currLine;
+		}
+	}
+	std::string finalFastaResult;
+	for (std::vector<int>::iterator it = abc.begin(); it != abc.end(); ++it) {
+		std::cout << *it << " ";
+		finalFastaResult += fastaReads[*it];
+	}
+
 	/*
 		Notify about success, return 0
 	*/
@@ -337,6 +366,7 @@ int main(int argc, char** argv) {
 	}
 	std::ofstream outputFile (outputPath.c_str());
 	outputFile << ">The result of the BOG goes here" << std::endl;
+	outputFile << finalFastaResult << std::endl;
 	outputFile.close();
 	return 0;
 }
