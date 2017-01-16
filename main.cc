@@ -77,6 +77,7 @@ typedef struct {
 */
 
 std::vector<read_t> reads;
+std::vector<mhapRead_t> mhapReads;
 
 int main(int argc, char** argv) {
 	/*
@@ -140,13 +141,20 @@ int main(int argc, char** argv) {
 		std::istringstream inStream(line);
 		int ix1,ix2,smm,rc1,rc2,s1,e1,l1,s2,e2,l2;
 		double js;
+		mhapRead_t cRead;
 		inStream >> ix1 >> ix2;
-		inStream >> js;
-		inStream >> smm;
+		inStream >> cRead.jaccardScore;
+		inStream >> cRead.smm;
 		inStream >> rc1 >> s1 >> e1 >> l1;
 		inStream >> rc2 >> s2 >> e2 >> l2;
+		cRead.id = std::make_pair(ix1,ix2);
+		cRead.l = std::make_pair(l1,l2);
+		cRead.start = std::make_pair(s1,s2);
+		cRead.end = std::make_pair(e1,e2);
+		cRead.rc = std::make_pair(rc1,rc2);
 //		std::cout << ix1 << " " << ix2 << " " << js << " " << smm << " " << rc1 << " " << s1 << " " << e1 << " " << l1 << " " << rc2 << " " << s2 << " " << e2 << " " << l2 << std::endl;
 		// push_back to a vector of reads
+		mhapReads.push_back(cRead);
 	}
 
 	/*
