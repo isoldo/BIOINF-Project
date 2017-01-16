@@ -27,7 +27,8 @@ SOFTWARE.
 #include <algorithm>
 #include <string>
 #include <cstring>
-
+#include <sstream>
+#include <fstream>
 /*
 	Program defines
 	To be moved to a separate header file
@@ -69,9 +70,22 @@ int main(int argc, char** argv) {
 
 	/*
 		open input files (fasta or mhap)
-			mhap is better, because conversion of ecoli_corrected.fasta to mhap takes about 70 minutes on 4 cores and 10 GB RAM
+			mhap is better, because conversion of ecoli_corrected.fasta to mhap (graphmap) takes about 70 minutes on 4 cores and 10 GB RAM
 	*/
-
+	// mhap for now :)
+	std::ifstream inputFile(inputPath.c_str(),std::ifstream::in);
+	std::string line;
+	while (std::getline(inputFile,line)) {
+		std::istringstream inStream(line);
+		int ix1,ix2,smm,rc1,rc2,s1,e1,l1,s2,e2,l2;
+		double js;
+		inStream >> ix1 >> ix2;
+		inStream >> js;
+		inStream >> smm;
+		inStream >> rc1 >> s1 >> e1 >> l1;
+		inStream >> rc2 >> s2 >> e2 >> l2;
+//		std::cout << ix1 << " " << ix2 << " " << js << " " << smm << " " << rc1 << " " << s1 << " " << e1 << " " << l1 << " " << rc2 << " " << s2 << " " << e2 << " " << l2 << std::endl;
+	}
 	/*
 		parse input file
 	*/
