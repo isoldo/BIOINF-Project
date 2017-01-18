@@ -21,17 +21,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+#include <bogart.h>
+#include <bestOverlap_DFS.h>
 #include <stdlib.h>
 #include <iostream>
-#include <vector>
-#include <utility>
-#include <map>
-#include <set>
 #include <algorithm>
-#include <string>
-#include <cstring>
 #include <sstream>
 #include <fstream>
+
+
 /*
 	Program defines
 	To be moved to a separate header file
@@ -39,42 +38,6 @@ SOFTWARE.
 
 #define ARGC_VAL_MIN (1+4)
 
-/*
-	Custom structs
-	To be moved to spearate header file
-*/
-
-typedef struct {
-	int 		verbose;
-	int 		defaultOutput;
-	int 		generateMhap;
-	std::string mhapPath;
-	std::string fastaPath;
-	std::string generatorPath;
-	std::string outputPath;
-} CONFIG;
-
-typedef struct {
-	std::pair<int,int> 	id;
-	std::pair<int,int> 	l;
-	std::pair<int,int> 	start;
-	std::pair<int,int> 	end;
-	std::pair<int,int> 	rc;
-	double 				jaccardScore;
-	int 				smm;
-} mhapRead_t;
-
-typedef std::pair<double,std::vector<int> > solution_t;
-
-typedef struct {
-	int 						thisNodeHasBeenVisited;
-	double 						bestCummulativeJaccardScore;
-	std::vector<mhapRead_t*> 	lOvlp;
-	std::vector<mhapRead_t*> 	rOvlp;
-	solution_t					bestSolution;
-} BOGNode_t;
-
-typedef std::map<int, BOGNode_t> overlapGraph_t;
 
 bool cmpNodes(mhapRead_t* a, mhapRead_t* b) {
 	if (a->jaccardScore != b->jaccardScore) {
@@ -101,14 +64,14 @@ std::map<int,std::string> fastaReads;
 /*
 	local function declarations
 */
-int callMhapGenerator(std::string& gPath);
-int parseMhapInput(std::ifstream& input, std::vector<mhapRead_t>& target);
+static int callMhapGenerator(std::string& gPath);
+static int parseMhapInput(std::ifstream& input, std::vector<mhapRead_t>& target);
 
-int buildDenseGraph(std::vector<mhapRead_t>& src, std::map<int,BOGNode_t>& dest, std::set<int>& ixSet);
-int filterDeadReads(std::map<int,BOGNode_t>& graph, std::set<int>& ixSet);
+static int buildDenseGraph(std::vector<mhapRead_t>& src, std::map<int,BOGNode_t>& dest, std::set<int>& ixSet);
+static int filterDeadReads(std::map<int,BOGNode_t>& graph, std::set<int>& ixSet);
 
-int isDoveTail(mhapRead_t* mRead);
-int isLeftAligned(mhapRead_t* mRead);
+static int isDoveTail(mhapRead_t* mRead);
+static int isLeftAligned(mhapRead_t* mRead);
 
 
 int main(int argc, char** argv) {
