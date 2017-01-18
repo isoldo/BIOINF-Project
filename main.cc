@@ -45,42 +45,68 @@ SOFTWARE.
 */
 
 typedef struct {
-	std::pair<int,int> id;
-	std::pair<int,int> l;
-	std::pair<int,int> start;
-	std::pair<int,int> end;
-	std::pair<int,int> rc;
-	double jaccardScore;
-	int smm;
-} mhapRead_t;
+	int 		verbose;
+	int 		defaultOutput;
+	int 		generateMhap;
+	std::string mhapPath;
+	std::string fastaPath;
+	std::string generatorPath;
+	std::string outputPath;
+} CONFIG;
 
 typedef struct {
-	std::vector<mhapRead_t*> lOvlp;
-	std::vector<mhapRead_t*> rOvlp;
+	std::pair<int,int> 	id;
+	std::pair<int,int> 	l;
+	std::pair<int,int> 	start;
+	std::pair<int,int> 	end;
+	std::pair<int,int> 	rc;
+	double 				jaccardScore;
+	int 				smm;
+} mhapRead_t;
+
+typedef std::pair<double,std::vector<int> > solution_t;
+
+typedef struct {
+	int 						thisNodeHasBeenVisited;
+	double 						bestCummulativeJaccardScore;
+	std::vector<mhapRead_t*> 	lOvlp;
+	std::vector<mhapRead_t*> 	rOvlp;
+	solution_t					bestSolution;
 } BOGNode_t;
+
+typedef std::map<int, BOGNode_t> overlapGraph_t;
 
 bool cmpNodes(mhapRead_t* a, mhapRead_t* b) {
 	if (a->jaccardScore != b->jaccardScore) {
 		return a->jaccardScore > b->jaccardScore;
 	}
-	return a->smm > b->smm;
+	return a->smm < b->smm;
 }
 
 /*
 	Global variables
 */
 
-std::map<int,BOGNode_t> nodes;
-std::map<int,BOGNode_t> nodes_filtered;
+CONFIG sysConfig;
+
+overlapGraph_t nodes;
+overlapGraph_t nodes_filtered;
+
 std::vector<mhapRead_t> mhapReads;
 std::set<int> readIxs;
-std::set<int> starters;
+std::set<int> startNodeIx;
 std::vector<std::vector<int> > results;
 std::map<int,std::string> fastaReads;
 
 /*
 	local function declarations
 */
+int callMhapGenerator(std::string& gPath);
+int parseMhapInput(std::ifstream& input, std::vector<mhapRead_t>& target);
+
+int buildDenseGraph(std::vector<mhapRead_t>& src, std::map<int,BOGNode_t>& dest, std::set<int>& ixSet);
+int filterDeadReads(std::map<int,BOGNode_t>& graph, std::set<int>& ixSet);
+
 int isDoveTail(mhapRead_t* mRead);
 int isLeftAligned(mhapRead_t* mRead);
 
@@ -89,13 +115,9 @@ int main(int argc, char** argv) {
 	/*
 		int main() variables
 	*/
-	int defaultOutput = 1;
-	std::string mhapPath;
-	std::string fastaPath;
-	std::string generatorPath;
-	std::string outputPath = "output.fasta";
-	double minJaccardScore = 1.0;
-	int minJaccardIx;
+
+	double minimumJaccardScore = 1.0;
+	int minimumJaccardScoreIndex = -1;
 	
 	/*
 		parse input arguments
@@ -107,11 +129,11 @@ int main(int argc, char** argv) {
 	}
 	for (int i=1; i<argc; ++i) {
 		if (strcmp(argv[i],"-in_mhap") == 0) {
-			mhapPath.assign(argv[++i]);
+			sysConfig.mhapPath.assign(argv[++i]);
 			std::string inputExtension;
-			std::string::size_type idx = mhapPath.rfind('.');
+			std::string::size_type idx = sysConfig.mhapPath.rfind('.');
 			if (idx != std::string::npos) {
-				inputExtension = mhapPath.substr(idx);
+				inputExtension = sysConfig.mhapPath.substr(idx);
 				if (strcmp(inputExtension.c_str(),".mhap")) {
 					std::cout << "Please set target to be a *.mhap file. (got " <<  inputExtension << ")" << std::endl << "Terminating." << std::endl;
 					return 1;
@@ -121,11 +143,11 @@ int main(int argc, char** argv) {
 				return 1;
 			}
 		} else if (strcmp(argv[i],"-fasta") == 0) {
-			fastaPath.assign(argv[++i]);
+			sysConfig.fastaPath.assign(argv[++i]);
 			std::string inputExtension;
-			std::string::size_type idx = fastaPath.rfind('.');
+			std::string::size_type idx = sysConfig.fastaPath.rfind('.');
 			if (idx != std::string::npos) {
-				inputExtension = fastaPath.substr(idx);
+				inputExtension = sysConfig.fastaPath.substr(idx);
 				if (strcmp(inputExtension.c_str(),".fasta")) {
 					std::cout << "Please provide a *.fasta input file. (got " <<  inputExtension << ")" << std::endl << "Terminating." << std::endl;
 					return 1;
@@ -135,17 +157,21 @@ int main(int argc, char** argv) {
 				return 1;
 			}
 		} else if (strcmp(argv[i],"-o") == 0) {
-			outputPath.assign(argv[++i]);
-			defaultOutput = 0;
+			sysConfig.outputPath.assign(argv[++i]);
+			sysConfig.defaultOutput = 0;
 			
 		} else if (strcmp(argv[i],"-mhap_gen") == 0) {
-			generatorPath.assign(argv[++i]);
+			sysConfig.generatorPath.assign(argv[++i]);
+			sysConfig.generateMhap = 1;
+		} else if (strcmp(argv[i],"-v") == 0) {
+			sysConfig.verbose = 1;
 		} else {
 			std::cout << "invalid cli options" << std::endl << "Terminating" << std::endl;
 			return 1;
 		}
 	}
-	if (fastaPath.empty() || mhapPath.empty()) {
+
+	if (sysConfig.fastaPath.empty() || sysConfig.mhapPath.empty()) {
 		std::cout << "Please provide both *.fasta and *.mhap files!" << std::endl;
 		return 1;
 	}
@@ -153,15 +179,10 @@ int main(int argc, char** argv) {
 		open input file (fasta or mhap)
 			mhap is better, because conversion of ecoli_corrected.fasta to mhap (graphmap) takes about 70 minutes on 4 cores and 10 GB RAM
 	*/
-	//std::cout << generatorPath" owler -r "fastaPath" -d "fastaPath" -o "mhapPath;
-	generatorPath += " owler -r ";
-	generatorPath += fastaPath;
-	generatorPath += " -d ";
-	generatorPath += fastaPath;
-	generatorPath += " -o ";
-	generatorPath += mhapPath;
-	std::cout << generatorPath << std::endl;
-	system(generatorPath.c_str());
+	if (sysConfig.generateMhap) {
+		// TODO check for return value
+		callMhapGenerator(generatorPath);
+	}
 
 	std::ifstream inputFile(mhapPath.c_str(),std::ifstream::in);
 	if (!inputFile) {
@@ -172,88 +193,30 @@ int main(int argc, char** argv) {
 	/*
 		parse input file
 	*/
-	std::string line;
-	while (std::getline(inputFile,line)) {
-		std::istringstream inStream(line);
-		int ix1,ix2,smm,rc1,rc2,s1,e1,l1,s2,e2,l2;
-		double js;
-		mhapRead_t cRead;
-		inStream >> ix1 >> ix2;
-		inStream >> cRead.jaccardScore;
-		inStream >> cRead.smm;
-		inStream >> rc1 >> s1 >> e1 >> l1;
-		inStream >> rc2 >> s2 >> e2 >> l2;
-		cRead.id = std::make_pair(ix1,ix2);
-		cRead.l = std::make_pair(l1,l2);
-		cRead.start = std::make_pair(s1,s2);
-		cRead.end = std::make_pair(e1,e2);
-		cRead.rc = std::make_pair(rc1,rc2);
-		// push_back to a vector of reads
-		mhapReads.push_back(cRead);
-	}
+	parseMhapInput(inputFile,mhapReads,sysConfig);
 
 	/*
 		generate read and overlap contexts
 		build the complete OVERLAP GRAPH
 	*/
-	for (int i = 0; i<mhapReads.size(); ++i) {
-		mhapRead_t* cRead = &mhapReads[i];
-		BOGNode_t bNodeF,bNodeS;
-		int ixf = cRead->id.first;
-		int ixs = cRead->id.second;
-		
-		// load existing map record
-		std::map<int,BOGNode_t>::iterator it = nodes.find(ixf);
-		if (it != nodes.end()) {
-			bNodeF = nodes[ixf];
-		} else {
-			readIxs.insert(ixf);
-		}
-		it = nodes.find(ixs);
-		if (it != nodes.end()) {
-			bNodeS = nodes[ixs];
-		} else {
-			readIxs.insert(ixs);
-		}
-		// ignore non-dovetail overlaps
-		if (isDoveTail(cRead)) {
-			if (isLeftAligned(cRead)) {
-				// add to left overlaps
-				bNodeF.lOvlp.push_back(cRead);
-				bNodeS.rOvlp.push_back(cRead);
-			} else {
-				// add to right overlaps
-				bNodeF.rOvlp.push_back(cRead);
-				bNodeS.lOvlp.push_back(cRead);
-			}
-		}
-		nodes[ixf] = bNodeF;
-		nodes[ixs] = bNodeS;
-	}
-	for (std::map<int,BOGNode_t>::iterator it=nodes.begin(); it!=nodes.end(); ++it) {
-		if (it->second.lOvlp.size() != 0 || it->second.rOvlp.size() != 0) {
-			// these reads have at least one overlaps
-			nodes_filtered[it->first] = it->second;
-		} else {
-			readIxs.erase(it->first);
-		}
-	}
-	for (std::map<int,BOGNode_t>::iterator it=nodes_filtered.begin(); it!=nodes_filtered.end(); ++it) {
-		// sort by Jaccard score which is not exactly Jaccard score when mhap comes from graphmap but ok
-		std::sort(it->second.lOvlp.begin(),it->second.lOvlp.end(),cmpNodes);
-		std::sort(it->second.rOvlp.begin(),it->second.rOvlp.end(),cmpNodes);
-		if (!it->second.lOvlp.empty()) {
-			if (minJaccardScore > it->second.lOvlp[0]->jaccardScore) {
-				minJaccardScore = it->second.lOvlp[0]->jaccardScore;
-				minJaccardIx = it->first;
-			}
-		}else {
-			//minJaccardScore = 0.0;
-			starters.insert(it->first);
-		}
-	}
 
-	// thats it, we have our densely populated overlap graph
+	buildDenseGraph(mhapReads,nodes,readIxs);
+	
+	/*
+		Delete nodes without any overlaps
+	*/
+
+	filterDeadReads(nodes,nodes_filtered,readIxs);
+	// nodes.clear();
+
+	/*
+		Find possible starter nodes 
+	*/
+
+	findStarters(nodes_filtered,startNodeIx,minimumJaccardScore,minimumJaccardScoreIndex);
+	if (startNodeIx.empty()) {
+		startNodeIx.insert(minimumJaccardScoreIndex);
+	}
 
 	/*
 		THE ALGORITHM
@@ -261,7 +224,8 @@ int main(int argc, char** argv) {
 		Create the best overlap graph
 			1 fasta read per chromosome is optimum
 	*/
-
+	std::vector<int> bestOverlapPath;
+	BOG_DFS(nodes_filtered,startNodeIx,bestOverlapPath);
 	// pick the node with the worst left overlap Jaccard score - this will be our starting node
 	std::vector<std::vector<mhapRead_t*> > mhapResults;
 	for (std::set<int>::iterator sIt = starters.begin(); sIt != starters.end(); sIt++) {
@@ -349,6 +313,128 @@ int main(int argc, char** argv) {
 	outputFile.close();
 	return 0;
 }
+
+int callMhapGenerator(std::string& gPath, CONFIG& config) {
+	std::string local_g_path;
+	local_g_path.assign(gPath);
+	local_g_path += " owler -r ";
+	local_g_path += fastaPath;
+	local_g_path += " -d ";
+	local_g_path += fastaPath;
+	local_g_path += " -o ";
+	local_g_path += mhapPath;
+	if (config.verbose) {
+		std::cout << "Calling " << local_g_path << std::endl;
+	}
+	return system(local_g_path.c_str());
+}
+
+int parseMhapInput(std::ifstream& input, std::vector<mhapRead_t>& target, CONFIG& config) {
+	std::string line;
+	while (std::getline(input,line)) {
+		std::istringstream inStream(line);
+		int ix1,ix2,rc1,rc2,s1,e1,l1,s2,e2,l2;
+		mhapRead_t cRead;
+		inStream >> ix1 >> ix2;
+		inStream >> cRead.jaccardScore;
+		inStream >> cRead.smm;
+		inStream >> rc1 >> s1 >> e1 >> l1;
+		inStream >> rc2 >> s2 >> e2 >> l2;
+		cRead.id = std::make_pair(ix1,ix2);
+		cRead.l = std::make_pair(l1,l2);
+		cRead.start = std::make_pair(s1,s2);
+		cRead.end = std::make_pair(e1,e2);
+		cRead.rc = std::make_pair(rc1,rc2);
+		// push_back to a vector of reads
+		target.push_back(cRead);
+	}
+	int tSize = target.size();
+	if (config.verbose) {
+		std::cout << "Parsed " << tSize << " reads." << std::endl;
+	}
+	return tSize;
+}
+
+int buildDenseGraph(std::vector<mhapRead_t>& src, std::map<int,BOGNode_t>& dest, std::set<int>& ixSet) {
+	for (int i = 0; i<src.size(); ++i) {
+		mhapRead_t* cRead = &src[i];
+		BOGNode_t bNodeF,bNodeS;
+		int ixf = cRead->id.first;
+		int ixs = cRead->id.second;
+
+		// load existing map record
+		std::map<int,BOGNode_t>::iterator it;
+
+		it = dest.find(ixf)
+		if (it != dest.end()) {
+			bNodeF = dest[ixf];
+		} else {
+			// kill this with constructor
+			bNodeF.thisNodeHasBeenVisited = 0;
+			bNodeF.bestCummulativeJaccardScore = 0.0;
+			ixSet.insert(ixf);
+		}
+
+		it = dest.find(ixs);
+		if (it != dest.end()) {
+			bNodeS = dest[ixs];
+		} else {
+			// kill this with constructor
+			bNodeS.thisNodeHasBeenVisited = 0;
+			bNodeS.bestCummulativeJaccardScore = 0.0;
+			ixSet.insert(ixs);
+		}
+
+		// ignore non-dovetail overlaps
+		if (isDoveTail(cRead)) {
+			if (isLeftAligned(cRead)) {
+				// add to left overlaps
+				bNodeF.lOvlp.push_back(cRead);
+				bNodeS.rOvlp.push_back(cRead);
+			} else {
+				// add to right overlaps
+				bNodeF.rOvlp.push_back(cRead);
+				bNodeS.lOvlp.push_back(cRead);
+			}
+		}
+		dest[ixf] = bNodeF;
+		dest[ixs] = bNodeS;
+	}
+	return dest.size();
+}
+
+int filterDeadReads(std::map<int,BOGNode_t>& graph, std::map<int,BOGNode_t>& graph_filtered, std::set<int>& ixSet, CONFIG& config) {
+	for (std::map<int,BOGNode_t>::iterator it=nodes.begin(); it!=nodes.end(); ++it) {
+		if (it->second.lOvlp.size() != 0 || it->second.rOvlp.size() != 0) {
+			// these reads have at least one overlaps
+			graph_filtered[it->first] = it->second;
+		} else {
+			ixSet.erase(it->first);
+			if (config.verbose) {
+				std::cout << "Read " << it->first << " is dead" << std::endl;
+			}
+		}
+	}
+}
+
+int findStarters(std::map<int,BOGNode_t>& graph, std::set<int>& starters, double& minJaccardScore, int& minJaccardIx) {
+	for (std::map<int,BOGNode_t>::iterator it=graph.begin(); it!=graph.end(); ++it) {
+		// sort by Jaccard score which is not exactly Jaccard score when mhap comes from graphmap but ok
+		std::sort(it->second.lOvlp.begin(),it->second.lOvlp.end(),cmpNodes);
+		std::sort(it->second.rOvlp.begin(),it->second.rOvlp.end(),cmpNodes);
+		if (!it->second.lOvlp.empty()) {
+			if (minJaccardScore > it->second.lOvlp[0]->jaccardScore) {
+				minJaccardScore = it->second.lOvlp[0]->jaccardScore;
+				minJaccardIx = it->first;
+			}
+		}else {
+			minJaccardScore = 0.0;
+			minJaccardIx = it->first;
+			starters.insert(it->first);
+		}
+	}
+}
+
 
 // not definitive
 int isDoveTail(mhapRead_t* mRead) {
