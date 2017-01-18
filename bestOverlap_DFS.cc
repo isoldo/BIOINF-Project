@@ -1,10 +1,10 @@
-#include <bogart.h>
-#include <bestOverlap_DFS.h>
+#include "bogart.h"
+#include "bestOverlap_DFS.h"
 
-static bool solutionCmp(solution_t& a, solution_t& b);
+static bool solutionCmp(solution_t a, solution_t b);
 static solution_t dfs(overlapGraph_t& graph, int ix);
 
-void BOG_DFS(overlapGraph_t graph, std::set<int>& starters, std::vector<int>& result) {
+void BOG_DFS(overlapGraph_t& graph, std::set<int>& starters, std::vector<int>& result) {
 	std::vector<solution_t> local_solutions;
 	for (std::set<int>::iterator it = starters.begin(); it!= starters.end(); ++it) {
 		local_solutions.push_back(dfs(graph,*it));
@@ -12,10 +12,10 @@ void BOG_DFS(overlapGraph_t graph, std::set<int>& starters, std::vector<int>& re
 	// sort local solutions
 	std::sort(local_solutions.begin(),local_solutions.end(),solutionCmp);
 	// store to result
-	result = local_soultions[0].second;
+	result = local_solutions[0].second;
 }
 
-static bool solutionCmp(solution_t& a, solution_t& b) {
+static bool solutionCmp(solution_t a, solution_t b) {
 	if (a.first != b.first) {
 		return a.first > b.first;
 	}
@@ -75,5 +75,5 @@ static solution_t dfs(overlapGraph_t& graph, int ix) {
 		local_solutions.push_back(tmp);
 	}
 	std::sort(local_solutions.begin(),local_solutions.end(),solutionCmp);
-	return local_solution[0];
+	return local_solutions[0];
 }

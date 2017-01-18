@@ -22,11 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include <bogart.h>
-#include <bestOverlap_DFS.h>
+#include "bogart.h"
+#include "bestOverlap_DFS.h"
 #include <stdlib.h>
 #include <iostream>
-#include <algorithm>
+
 #include <sstream>
 #include <fstream>
 
@@ -64,11 +64,12 @@ std::map<int,std::string> fastaReads;
 /*
 	local function declarations
 */
-static int callMhapGenerator(std::string& gPath);
-static int parseMhapInput(std::ifstream& input, std::vector<mhapRead_t>& target);
+static int callMhapGenerator(CONFIG& config);
+static int parseMhapInput(std::ifstream& input, std::vector<mhapRead_t>& target, CONFIG& config);
 
 static int buildDenseGraph(std::vector<mhapRead_t>& src, std::map<int,BOGNode_t>& dest, std::set<int>& ixSet);
-static int filterDeadReads(std::map<int,BOGNode_t>& graph, std::set<int>& ixSet);
+static int filterDeadReads(std::map<int,BOGNode_t>& graph, std::map<int,BOGNode_t>& graph_filtered, std::set<int>& ixSet, CONFIG& config);
+static int findStarters(std::map<int,BOGNode_t>& graph, std::set<int>& starters, double& minJaccardScore, int& minJaccardIx);
 
 static int isDoveTail(mhapRead_t* mRead);
 static int isLeftAligned(mhapRead_t* mRead);
@@ -144,12 +145,12 @@ int main(int argc, char** argv) {
 	*/
 	if (sysConfig.generateMhap) {
 		// TODO check for return value
-		callMhapGenerator(generatorPath);
+		callMhapGenerator(sysConfig);
 	}
 
-	std::ifstream inputFile(mhapPath.c_str(),std::ifstream::in);
+	std::ifstream inputFile(sysConfig.mhapPath.c_str(),std::ifstream::in);
 	if (!inputFile) {
-		std::cout << mhapPath <<": No such file" << std::endl;
+		std::cout << sysConfig.mhapPath <<": No such file" << std::endl;
 		return 1;
 	}
 	
@@ -169,7 +170,7 @@ int main(int argc, char** argv) {
 		Delete nodes without any overlaps
 	*/
 
-	filterDeadReads(nodes,nodes_filtered,readIxs);
+	filterDeadReads(nodes,nodes_filtered,readIxs,sysConfig);
 	// nodes.clear();
 
 	/*
@@ -177,6 +178,7 @@ int main(int argc, char** argv) {
 	*/
 
 	findStarters(nodes_filtered,startNodeIx,minimumJaccardScore,minimumJaccardScoreIndex);
+
 	if (startNodeIx.empty()) {
 		startNodeIx.insert(minimumJaccardScoreIndex);
 	}
@@ -191,12 +193,12 @@ int main(int argc, char** argv) {
 	BOG_DFS(nodes_filtered,startNodeIx,bestOverlapPath);
 	// pick the node with the worst left overlap Jaccard score - this will be our starting node
 	std::vector<std::vector<mhapRead_t*> > mhapResults;
-	for (std::set<int>::iterator sIt = starters.begin(); sIt != starters.end(); sIt++) {
+	for (std::set<int>::iterator sIt = startNodeIx.begin(); sIt != startNodeIx.end(); sIt++) {
 		std::vector<int> result;
 		std::vector<mhapRead_t*> mhapResult;
 		std::set<int> currentSet = readIxs;
 		result.push_back(*sIt);
-		currentSet.erase(minJaccardIx);
+		currentSet.erase(minimumJaccardScoreIndex);
 		while(currentSet.size()) {
 			int currentReadIx = result.back();
 			std::pair<int,int> indices;
@@ -241,12 +243,13 @@ int main(int argc, char** argv) {
 		Take the BOG and write i in FASTA format
 	*/
 
-	std::ifstream fastaInput(fastaPath.c_str(),std::ifstream::in);
+	std::ifstream fastaInput(sysConfig.fastaPath.c_str(),std::ifstream::in);
 	if (!fastaInput) {
-		std::cout << fastaPath << ": No such file" << std::endl;
+		std::cout << sysConfig.fastaPath << ": No such file" << std::endl;
 		return 1;
 	}
 	int counter = 0;
+	std::string line;
 	while(std::getline(fastaInput,line)) {
 		std::istringstream inStream(line);
 		std::string currLine;
@@ -268,31 +271,31 @@ int main(int argc, char** argv) {
 	/*
 		Notify about success, return 0
 	*/
-	std::cout << "Output to: " << outputPath << std::endl;
+	std::cout << "Output to: " << sysConfig.outputPath << std::endl;
 	
-	std::ofstream outputFile (outputPath.c_str());
+	std::ofstream outputFile (sysConfig.outputPath.c_str());
 	outputFile << ">The result of the BOG goes here" << std::endl;
 	outputFile << finalFastaResult << std::endl;
 	outputFile.close();
 	return 0;
 }
 
-int callMhapGenerator(std::string& gPath, CONFIG& config) {
+static int callMhapGenerator(CONFIG& config) {
 	std::string local_g_path;
-	local_g_path.assign(gPath);
+	local_g_path.assign(config.generatorPath);
 	local_g_path += " owler -r ";
-	local_g_path += fastaPath;
+	local_g_path += config.fastaPath;
 	local_g_path += " -d ";
-	local_g_path += fastaPath;
+	local_g_path += config.fastaPath;
 	local_g_path += " -o ";
-	local_g_path += mhapPath;
+	local_g_path += config.mhapPath;
 	if (config.verbose) {
 		std::cout << "Calling " << local_g_path << std::endl;
 	}
 	return system(local_g_path.c_str());
 }
 
-int parseMhapInput(std::ifstream& input, std::vector<mhapRead_t>& target, CONFIG& config) {
+static int parseMhapInput(std::ifstream& input, std::vector<mhapRead_t>& target, CONFIG& config) {
 	std::string line;
 	while (std::getline(input,line)) {
 		std::istringstream inStream(line);
@@ -318,7 +321,7 @@ int parseMhapInput(std::ifstream& input, std::vector<mhapRead_t>& target, CONFIG
 	return tSize;
 }
 
-int buildDenseGraph(std::vector<mhapRead_t>& src, std::map<int,BOGNode_t>& dest, std::set<int>& ixSet) {
+static int buildDenseGraph(std::vector<mhapRead_t>& src, std::map<int,BOGNode_t>& dest, std::set<int>& ixSet) {
 	for (int i = 0; i<src.size(); ++i) {
 		mhapRead_t* cRead = &src[i];
 		BOGNode_t bNodeF,bNodeS;
@@ -328,13 +331,13 @@ int buildDenseGraph(std::vector<mhapRead_t>& src, std::map<int,BOGNode_t>& dest,
 		// load existing map record
 		std::map<int,BOGNode_t>::iterator it;
 
-		it = dest.find(ixf)
+		it = dest.find(ixf);
 		if (it != dest.end()) {
 			bNodeF = dest[ixf];
 		} else {
 			// kill this with constructor
 			bNodeF.thisNodeHasBeenVisited = 0;
-			bNodeF.bestCummulativeJaccardScore = 0.0;
+			bNodeF.bestCumulativeJaccardScore = 0.0;
 			ixSet.insert(ixf);
 		}
 
@@ -344,7 +347,7 @@ int buildDenseGraph(std::vector<mhapRead_t>& src, std::map<int,BOGNode_t>& dest,
 		} else {
 			// kill this with constructor
 			bNodeS.thisNodeHasBeenVisited = 0;
-			bNodeS.bestCummulativeJaccardScore = 0.0;
+			bNodeS.bestCumulativeJaccardScore = 0.0;
 			ixSet.insert(ixs);
 		}
 
@@ -366,7 +369,7 @@ int buildDenseGraph(std::vector<mhapRead_t>& src, std::map<int,BOGNode_t>& dest,
 	return dest.size();
 }
 
-int filterDeadReads(std::map<int,BOGNode_t>& graph, std::map<int,BOGNode_t>& graph_filtered, std::set<int>& ixSet, CONFIG& config) {
+static int filterDeadReads(std::map<int,BOGNode_t>& graph, std::map<int,BOGNode_t>& graph_filtered, std::set<int>& ixSet, CONFIG& config) {
 	for (std::map<int,BOGNode_t>::iterator it=nodes.begin(); it!=nodes.end(); ++it) {
 		if (it->second.lOvlp.size() != 0 || it->second.rOvlp.size() != 0) {
 			// these reads have at least one overlaps
@@ -380,7 +383,7 @@ int filterDeadReads(std::map<int,BOGNode_t>& graph, std::map<int,BOGNode_t>& gra
 	}
 }
 
-int findStarters(std::map<int,BOGNode_t>& graph, std::set<int>& starters, double& minJaccardScore, int& minJaccardIx) {
+static int findStarters(std::map<int,BOGNode_t>& graph, std::set<int>& starters, double& minJaccardScore, int& minJaccardIx) {
 	for (std::map<int,BOGNode_t>::iterator it=graph.begin(); it!=graph.end(); ++it) {
 		// sort by Jaccard score which is not exactly Jaccard score when mhap comes from graphmap but ok
 		std::sort(it->second.lOvlp.begin(),it->second.lOvlp.end(),cmpNodes);
@@ -400,7 +403,7 @@ int findStarters(std::map<int,BOGNode_t>& graph, std::set<int>& starters, double
 
 
 // not definitive
-int isDoveTail(mhapRead_t* mRead) {
+static int isDoveTail(mhapRead_t* mRead) {
 	if (mRead->start.first != 0 && mRead->end.first != (mRead->l.first-1)) {
 		// doesnt start at the beginning nor does it end at the end, this is a pratial overlap
 		return 0;
@@ -416,6 +419,6 @@ int isDoveTail(mhapRead_t* mRead) {
 // the end of the second read overlaps with the beginning of the first read
 
 // not definitive
-int isLeftAligned(mhapRead_t* mRead) {
+static int isLeftAligned(mhapRead_t* mRead) {
 	return mRead->start.first == 0;
 }
