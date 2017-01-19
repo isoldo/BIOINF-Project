@@ -50,17 +50,6 @@ bool cmpNodes(mhapRead_t* a, mhapRead_t* b) {
 	Global variables
 */
 
-CONFIG sysConfig;
-
-overlapGraph_t nodes;
-overlapGraph_t nodes_filtered;
-
-std::vector<mhapRead_t> mhapReads;
-std::set<int> readIxs;
-std::set<int> startNodeIx;
-std::vector<std::vector<int> > results;
-std::map<int,std::string> fastaReads;
-
 /*
 	local function declarations
 */
@@ -79,7 +68,16 @@ int main(int argc, char** argv) {
 	/*
 		int main() variables
 	*/
+	CONFIG sysConfig;
 
+	overlapGraph_t nodes;
+	overlapGraph_t nodes_filtered;
+
+	std::vector<mhapRead_t> mhapReads;
+	std::set<int> readIxs;
+	std::set<int> startNodeIx;
+	std::vector<std::vector<int> > results;
+	std::map<int,std::string> fastaReads;
 	double minimumJaccardScore = 1.0;
 	int minimumJaccardScoreIndex = -1;
 	
@@ -155,13 +153,15 @@ int main(int argc, char** argv) {
 	}
 	
 	/*
-		parse input file
+		Parse input file
+		Save to a vector of reads
 	*/
+
 	parseMhapInput(inputFile,mhapReads,sysConfig);
 
 	/*
-		generate read and overlap contexts
-		build the complete OVERLAP GRAPH
+		Generate read and overlap contexts
+		Build the COMPLETE OVERLAP GRAPH
 	*/
 
 	buildDenseGraph(mhapReads,nodes,readIxs);
@@ -171,7 +171,6 @@ int main(int argc, char** argv) {
 	*/
 
 	filterDeadReads(nodes,nodes_filtered,readIxs,sysConfig);
-	// nodes.clear();
 
 	/*
 		Find possible starter nodes 
@@ -179,68 +178,21 @@ int main(int argc, char** argv) {
 
 	findStarters(nodes_filtered,startNodeIx,minimumJaccardScore,minimumJaccardScoreIndex);
 
+	// if there are no nodes without left overlaps, use the one with the lowest jaccard score
 	if (startNodeIx.empty()) {
 		startNodeIx.insert(minimumJaccardScoreIndex);
 	}
 
 	/*
 		THE ALGORITHM
-		Travel through the overlap graph, remove contained reads, remove cycles, pick best overlaps
-		Create the best overlap graph
-			1 fasta read per chromosome is optimum
+		Plain simple DFS. Metrics: maximize the product of jaccard score along the path.
+		Room for improvement: set a low boundary for the cumulative score, create snippets with good cumulative jaccard score
 	*/
 	std::vector<int> bestOverlapPath;
 	BOG_DFS(nodes_filtered,startNodeIx,bestOverlapPath);
-	// pick the node with the worst left overlap Jaccard score - this will be our starting node
-	std::vector<std::vector<mhapRead_t*> > mhapResults;
-	for (std::set<int>::iterator sIt = startNodeIx.begin(); sIt != startNodeIx.end(); sIt++) {
-		std::vector<int> result;
-		std::vector<mhapRead_t*> mhapResult;
-		std::set<int> currentSet = readIxs;
-		result.push_back(*sIt);
-		currentSet.erase(minimumJaccardScoreIndex);
-		while(currentSet.size()) {
-			int currentReadIx = result.back();
-			std::pair<int,int> indices;
-			if (!nodes_filtered[currentReadIx].rOvlp.empty()) {
-				indices = nodes_filtered[currentReadIx].rOvlp[0]->id;
-				if (indices.first == currentReadIx && currentSet.find(indices.second)!=currentSet.end()) {
-					result.push_back(indices.second);
-					mhapResult.push_back(nodes_filtered[currentReadIx].rOvlp[0]);
-					currentSet.erase(indices.second);
-				} else {
-					if (currentSet.find(indices.first)!=currentSet.end()) {
-						result.push_back(indices.first);
-						mhapResult.push_back(nodes_filtered[currentReadIx].rOvlp[0]);
-						currentSet.erase(indices.first);
-					} else {
-						results.push_back(result);
-						mhapResults.push_back(mhapResult);
-						break;
-					}
-				}
-			} else {
-				results.push_back(result);
-				break;
-			}
-		}
-	}
-
-	std::vector<std::vector<int> >::iterator itMax = results.begin();
-	for (std::vector<std::vector<int> >::iterator it = results.begin(); it!=results.end(); ++it) {
-		if ( (*it).size() > (*itMax).size() ) {
-			itMax = it;
-		}
-	}
-	std::vector<std::vector<mhapRead_t*> >::iterator mitMax = mhapResults.begin();
-	for (std::vector<std::vector<mhapRead_t*> >::iterator it = mhapResults.begin(); it!=mhapResults.end(); ++it) {
-		if ( (*it).size() > (*mitMax).size() ) {
-			mitMax = it;
-		}
-	}
 
 	/*
-		Take the BOG and write i in FASTA format
+		Take the BOG and write it in FASTA format
 	*/
 
 	std::ifstream fastaInput(sysConfig.fastaPath.c_str(),std::ifstream::in);
@@ -261,12 +213,8 @@ int main(int argc, char** argv) {
 		}
 	}
 	std::string finalFastaResult;
-	std::vector<int> finalReads = *itMax;
-	std::vector<mhapRead_t*> finalMhapReads = *mitMax;
 
-	 for (std::vector<int>::iterator it = finalReads.begin(); it != finalReads.end(); ++it) {
-	 	finalFastaResult += fastaReads[*it];
-	}
+	createFastaOutput(bestOverlapPath,mhapReads,finalFastaResult);
 
 	/*
 		Notify about success, return 0

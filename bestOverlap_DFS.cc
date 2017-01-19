@@ -44,13 +44,13 @@ static solution_t dfs(overlapGraph_t& graph, int ix) {
 
 		if (graph[ovlp_ix].thisNodeHasBeenVisited == 0) {
 			// best solution for the overlapping read has not been found yet
-			graph[ovlp_ix].thisNodeHasBeenVisited = 1;
+			graph[ovlp_ix].thisNodeHasBeenVisited = 2;
 			current_solution = dfs(graph,ovlp_ix);
-		} else {
+		} else if (graph[ovlp_ix].thisNodeHasBeenVisited == 1){
 			// best solution already exists
 			current_solution = graph[ovlp_ix].bestSolution;
 		}
-
+		// TODO break cycles !
 		/*
 			ARBITRARY METRIC
 				find the best cumulative jaccard
