@@ -191,8 +191,10 @@ int main(int argc, char** argv) {
 		Plain simple DFS. Metrics: maximize the product of jaccard score along the path.
 		Room for improvement: set a low boundary for the cumulative score, create snippets with good cumulative jaccard score
 	*/
-	std::vector<int> bestOverlapPath;
+	solution_t bestOverlapPath;
 	BOG_DFS(nodes_filtered,startNodeIx,bestOverlapPath);
+	std::reverse(bestOverlapPath.second.first.begin(),bestOverlapPath.second.first.end());
+	std::reverse(bestOverlapPath.second.second.begin(),bestOverlapPath.second.second.end());
 
 	/*
 		Take the BOG and write it in FASTA format
@@ -213,11 +215,12 @@ int main(int argc, char** argv) {
 			++ counter;
 		} else {
 			fastaReads[counter] += currLine;
+			//std::cout << fastaReads[counter] << std::endl;
 		}
 	}
 	std::string finalFastaResult;
 
-	createFastaOutput(bestOverlapPath,mhapReads,fastaReads,finalFastaResult);
+	createFastaOutput(bestOverlapPath,fastaReads,finalFastaResult);
 
 	/*
 		Notify about success, return 0

@@ -3,6 +3,6 @@
 
 #include <set>
 
-void BOG_DFS(overlapGraph_t& graph, std::set<int>& starters, std::vector<int>& result);
+void BOG_DFS(overlapGraph_t& graph, std::set<int>& starters, solution_t& result);
 
 #endif

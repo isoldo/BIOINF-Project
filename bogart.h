@@ -30,7 +30,7 @@ typedef struct {
 } mhapRead_t;
 
 typedef std::vector<mhapRead_t*> mhapList_t;
-typedef std::pair<double,std::vector<int> > solution_t;
+typedef std::pair<double,std::pair<std::vector<int>, std::vector<mhapRead_t*> > > solution_t;
 
 typedef struct {
 	int 		thisNodeHasBeenVisited;

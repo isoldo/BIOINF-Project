@@ -3,6 +3,6 @@
 
 #include "bogart.h"
 
-void createFastaOutput(std::vector<int>& bog, std::vector<mhapRead_t>& reads, std::map<int,std::string>& input, std::string& output);
+void createFastaOutput(solution_t& bog, std::map<int,std::string>& input, std::string& output);
 
 #endif
