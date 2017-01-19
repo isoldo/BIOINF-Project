@@ -7,6 +7,7 @@
 #include <cstring>
 #include <map>
 #include <algorithm>
+#include <iostream>
 
 typedef struct {
 	int 		verbose;

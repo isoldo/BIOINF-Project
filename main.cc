@@ -24,8 +24,9 @@ SOFTWARE.
 
 #include "bogart.h"
 #include "bestOverlap_DFS.h"
+#include "output.h"
 #include <stdlib.h>
-#include <iostream>
+
 
 #include <sstream>
 #include <fstream>
@@ -214,7 +215,7 @@ int main(int argc, char** argv) {
 	}
 	std::string finalFastaResult;
 
-	createFastaOutput(bestOverlapPath,mhapReads,finalFastaResult);
+	createFastaOutput(bestOverlapPath,mhapReads,fastaReads,finalFastaResult);
 
 	/*
 		Notify about success, return 0
@@ -318,7 +319,7 @@ static int buildDenseGraph(std::vector<mhapRead_t>& src, std::map<int,BOGNode_t>
 }
 
 static int filterDeadReads(std::map<int,BOGNode_t>& graph, std::map<int,BOGNode_t>& graph_filtered, std::set<int>& ixSet, CONFIG& config) {
-	for (std::map<int,BOGNode_t>::iterator it=nodes.begin(); it!=nodes.end(); ++it) {
+	for (std::map<int,BOGNode_t>::iterator it=graph.begin(); it!=graph.end(); ++it) {
 		if (it->second.lOvlp.size() != 0 || it->second.rOvlp.size() != 0) {
 			// these reads have at least one overlaps
 			graph_filtered[it->first] = it->second;
