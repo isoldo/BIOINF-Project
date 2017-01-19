@@ -81,6 +81,8 @@ int main(int argc, char** argv) {
 	std::map<int,std::string> fastaReads;
 	double minimumJaccardScore = 1.0;
 	int minimumJaccardScoreIndex = -1;
+
+	sysConfig.generateMhap = 0;
 	
 	/*
 		parse input arguments

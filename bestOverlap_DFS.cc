@@ -49,6 +49,9 @@ static solution_t dfs(overlapGraph_t& graph, int ix) {
 		} else if (graph[ovlp_ix].thisNodeHasBeenVisited == 1){
 			// best solution already exists
 			current_solution = graph[ovlp_ix].bestSolution;
+		} else {
+			std::cout << "Stuck in a cycle :(" << std::endl;
+			std::cin >> ovlp_ix;
 		}
 		// TODO break cycles !
 		/*
