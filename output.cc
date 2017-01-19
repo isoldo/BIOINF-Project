@@ -1,40 +1,34 @@
 #include "output.h"
 
-void createFastaOutput(std::vector<int>& bog, std::vector<mhapRead_t>& reads, std::map<int,std::string>& input, std::string& output) {
-	std::vector<int>::iterator first = bog.begin();
-	std::vector<int>::iterator second = first + 1;
+void createFastaOutput(solution_t& bog, std::map<int,std::string>& input, std::string& output) {
+	std::vector<int>::iterator ixIt = bog.second.first.begin();
+	std::vector<mhapRead_t*>::iterator rIt = bog.second.second.begin();
+	for (; ixIt != bog.second.first.end() && rIt != bog.second.second.end(); ++ixIt,++rIt) {
+		int ix = *ixIt;
+		mhapRead_t read = *(*rIt);
+		std::string fFasta,sFasta;
 
-	while (second != bog.end()) {
-		int ix1 = std::min(*first,*second);
-		int ix2 = std::max(*first,*second);
-		int i = 0;
-		mhapRead_t mr;
-		std::string firstFasta, secondFasta;
-		do {
-			mr = reads[i++];
-		} while (mr.id.first != ix1 && mr.id.second != ix2 || i < reads.size());
-		if (ix1 == mr.id.first) {
-			if (mr.end.first != mr.l.first-1) {
-				std::cout << "Warning: First read(" << mr.id.first << ")  does not end at its end! (ovlp: " << mr.id.first << "," << mr.id.second << ")" << std::endl;
+		if (ix == read.id.first) {
+			// the first sequence is the first element of the pair
+			// this should be the left read
+			if (read.end.first != (read.l.first-1) || read.start.second != 0) {
+				std::cout << "Nije ti dobra logika, sinko (" << read.rc.second << ") "<< read.start.second << " " << read.end.second << " " << read.l.second << std::endl;
 			}
-			if (mr.start.second != 0) {
-				std::cout << "Warning: Second read does not start from its start! (ovlp: " << mr.id.first << "," << mr.id.second << ")" << std::endl;
-			}
-			firstFasta.assign(input[ix1].begin(), input[ix1].begin()+mr.start.first);
-			secondFasta.assign(input[ix2].begin(),input[ix2].end());
+			// ARBITRARY
+			// the overlapping part will be taken from the second read
+			fFasta.assign(input[read.id.first].begin(),input[read.id.first].end());
+			sFasta.assign(input[read.id.second].begin()+read.end.second,input[read.id.second].end());
 		} else {
-			if (mr.end.second != mr.l.second-1) {
-				std::cout << "Warning: First read (" << mr.id.second << ") does not end at its end! (ovlp: " << mr.id.first << "," << mr.id.second << ")" << std::endl;
+			// the first sequence is the second element of the pair
+			if (read.end.second != (read.l.second-1) || read.start.first != 0) {
+				//std::cout << "Nije ti dobra logika 2, sinko " << (read.end.second != (read.l.second-1)) << (read.start.first != 0) << std::endl;
 			}
-			if (mr.start.first != 0) {
-				std::cout << "Warning: Second read does not start from its start! (ovlp: " << mr.id.first << "," << mr.id.second << ")" << std::endl;
-			}
-			firstFasta.assign(input[ix2].begin(), input[ix2].begin()+mr.start.second);
-			secondFasta.assign(input[ix1].begin(),input[ix1].end());
+			fFasta.assign(input[read.id.second].begin(), input[read.id.second].end());
+			sFasta.assign(input[read.id.first].begin()+read.end.first, input[read.id.first].end());
 		}
-		output += firstFasta;
-		output += secondFasta;
-		++first;
-		++second;
+		if (output.empty()){
+			output += fFasta;
+		}
+		output += sFasta;
 	}
 }
