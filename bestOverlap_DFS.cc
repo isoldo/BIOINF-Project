@@ -58,7 +58,7 @@ static solution_t dfs(overlapGraph_t& graph, int ix) {
 			ARBITRARY METRIC
 				find the best cumulative jaccard
 		*/
-
+		graph[ovlp_ix].thisNodeHasBeenVisited = 1;
 		// multiply the jaccardScore of this overlap with cumulative jaccard score of the child node
 		current_solution.first *= current_read.jaccardScore;
 		// add this node into the path vector
