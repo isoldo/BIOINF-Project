@@ -33,7 +33,7 @@ typedef std::vector<mhapRead_t*> mhapList_t;
 typedef std::pair<double,std::pair<std::vector<int>, std::vector<mhapRead_t*> > > solution_t;
 
 typedef struct {
-	int 		thisNodeHasBeenVisited;
+	int 		visited;
 	double 		bestCumulativeJaccardScore;
 	mhapList_t 	lOvlp;
 	mhapList_t 	rOvlp;
