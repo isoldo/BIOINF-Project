@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
 	
 	if (argc < ARGC_VAL_MIN) {
 		std::cout << "Too few parameters! Expected at least " << ARGC_VAL_MIN-1 << ", got " << argc-1 << ".\r\nTerminating." << std::endl;
-		return 1;
+		return -1;
 	}
 	for (int i=1; i<argc; ++i) {
 		if (strcmp(argv[i],"-in_mhap") == 0) {
